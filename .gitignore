@@ -20,6 +20,5 @@ Thumbs.db
 .cache/
 .temp/
 .tmp/
-example/
 example/node_modules/
 example/dist/
