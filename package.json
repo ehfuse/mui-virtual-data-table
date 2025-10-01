@@ -1,6 +1,6 @@
 {
     "name": "@ehfuse/mui-virtual-data-table",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A high-performance virtual data table component for React with Material-UI integration",
     "type": "module",
     "main": "dist/index.js",
@@ -62,7 +62,7 @@
         "node": ">=16.0.0"
     },
     "dependencies": {
-        "@ehfuse/mui-fadeout-loading-progress": "^1.0.0",
-        "@ehfuse/overlay-scrollbar": "^1.4.0"
+        "@ehfuse/mui-fadeout-loading-progress": "^1.0.1",
+        "@ehfuse/overlay-scrollbar": "^1.4.1"
     }
 }

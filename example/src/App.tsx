@@ -60,11 +60,15 @@ const generateTestData = (count: number): User[] => {
     }));
 };
 
+// 빈 데이터 생성 (테스트용)
+const generateEmptyData = (): User[] => {
+    return [];
+};
+
 function App() {
     const [darkMode, setDarkMode] = useState(false);
     const [data, setData] = useState<User[]>([]);
     const [loading, setLoading] = useState(true); // 초기 로딩 상태
-    const [hasMore, setHasMore] = useState(true);
     const [sortBy, setSortBy] = useState<string>();
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -195,11 +199,6 @@ function App() {
 
             setData((prev) => [...prev, ...updatedData]);
             setLoading(false);
-
-            // 500개까지만 로드하고 hasMore false로 설정
-            if (data.length + updatedData.length >= 500) {
-                setHasMore(false);
-            }
         },
         [data.length]
     );
@@ -215,10 +214,6 @@ function App() {
         }));
         setData((prev) => [...prev, ...updatedData]);
         setLoading(false);
-
-        if (data.length + updatedData.length >= 500) {
-            setHasMore(false);
-        }
     };
 
     return (
@@ -244,6 +239,7 @@ function App() {
                             gap: 2,
                             alignItems: "center",
                             mt: 2,
+                            flexWrap: "wrap",
                         }}
                     >
                         <FormControlLabel
@@ -263,6 +259,27 @@ function App() {
                             disabled={loading}
                         >
                             {loading ? "로딩 중..." : "데이터 추가 (500개)"}
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            onClick={() => {
+                                setData(generateEmptyData());
+                            }}
+                        >
+                            데이터 비우기
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            onClick={async () => {
+                                setLoading(true);
+                                await new Promise((resolve) =>
+                                    setTimeout(resolve, 1000)
+                                );
+                                setData(generateTestData(50));
+                                setLoading(false);
+                            }}
+                        >
+                            데이터 초기화 (50개)
                         </Button>
                         <Typography variant="body2" color="text.secondary">
                             총 {data.length}개 항목
@@ -285,11 +302,17 @@ function App() {
                         columns={columns}
                         totalCount={data.length}
                         loading={loading}
-                        hasMore={hasMore}
-                        onLoadMore={handleLoadMore}
+                        onLoadMore={
+                            data.length >= 500 ? undefined : handleLoadMore
+                        }
                         sortBy={sortBy}
                         sortDirection={sortDirection}
                         onSort={handleSort}
+                        // striped={true}
+                        // rowDivider={false}
+                        // showPaper={true}
+                        // paddingX={0}
+                        emptyMessage="데이터가 없습니다"
                         onRowClick={(item: User) => {
                             console.log("Row clicked:", item);
                             alert(

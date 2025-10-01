@@ -25,7 +25,7 @@
  */
 
 import React from "react";
-import { OverlayScrollbarProps } from "./OverlayScrollbar";
+import { OverlayScrollbarProps } from "@ehfuse/overlay-scrollbar";
 
 /**
  * 테이블 컬럼 정의 인터페이스
@@ -61,16 +61,20 @@ export interface VirtualDataTableProps<T> {
     data: T[]; // 표시할 데이터 배열
     totalCount: number; // 총 데이터 개수
     loading?: boolean; // 로딩 상태
-    hasMore?: boolean; // 더 많은 데이터가 있는지 여부
     columns: DataColumn<T>[]; // 테이블 컬럼 정의
     onRowClick?: (item: T, index: number) => void; // 행 클릭 이벤트 핸들러
     rowHeight?: number; // 행 높이 (px)
+    columnHeight?: number; // 컬럼 헤더 높이 (px, 기본값: 56)
+    striped?: string | boolean; // Zebra striping (true: 기본 회색, string: 지정 색상, false: 없음)
+    rowDivider?: boolean; // 행 구분선 표시 여부 (기본값: true)
     onSort?: (columnId: string, direction: SortDirection) => void; // 정렬 이벤트 핸들러
     onLoadMore?: (offset: number, limit: number) => void; // 더 많은 데이터 로드 요청 핸들러
     sortBy?: string; // 현재 정렬 필드
     sortDirection?: SortDirection; // 현재 정렬 방향
     showPaper?: boolean; // Paper 컴포넌트 표시 여부
+    paddingX?: string | number; // 테이블 좌우 패딩 (기본값: "1rem")
     scrollbars?: VDTOverlayScrollbarProps; // 스크롤바 커스터마이징 옵션
+    emptyMessage?: string | React.ReactNode; // 데이터가 없을 때 표시할 메시지 (기본값: "NO DATA")
     LoadingComponent?: React.ComponentType<{
         visible?: boolean;
         onComplete?: () => void;
