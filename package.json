@@ -1,5 +1,5 @@
 {
-    "name": "virtual-data-table",
+    "name": "@ehfuse/mui-virtual-data-table",
     "version": "1.0.0",
     "description": "A high-performance virtual data table component for React with Material-UI integration",
     "type": "module",
@@ -19,7 +19,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/ehfuse/virtual-data-table.git"
+        "url": "git+https://github.com/ehfuse/mui-virtual-data-table.git"
     },
     "keywords": [
         "react",
@@ -35,9 +35,9 @@
     "author": "김영진 <ehfuse@gmail.com>",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/ehfuse/virtual-data-table/issues"
+        "url": "https://github.com/ehfuse/mui-virtual-data-table/issues"
     },
-    "homepage": "https://github.com/ehfuse/virtual-data-table#readme",
+    "homepage": "https://github.com/ehfuse/mui-virtual-data-table#readme",
     "peerDependencies": {
         "@emotion/react": ">=11.0.0",
         "@emotion/styled": ">=11.0.0",

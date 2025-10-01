@@ -25,7 +25,7 @@
  */
 
 import React from "react";
-import { VirtuosoScrollbarProps } from "./components/Scrollbar";
+import { OverlayScrollbarProps } from "./OverlayScrollbar";
 
 /**
  * 테이블 컬럼 정의 인터페이스
@@ -50,6 +50,11 @@ export interface SortableFilter {
 }
 
 /**
+ * OverlayScrollbarProps에서 children을 제외한 타입
+ */
+export type VDTOverlayScrollbarProps = Omit<OverlayScrollbarProps, "children">;
+
+/**
  * 데이터 기반 가상화 테이블 컴포넌트 Props
  */
 export interface VirtualDataTableProps<T> {
@@ -65,7 +70,7 @@ export interface VirtualDataTableProps<T> {
     sortBy?: string; // 현재 정렬 필드
     sortDirection?: SortDirection; // 현재 정렬 방향
     showPaper?: boolean; // Paper 컴포넌트 표시 여부
-    scrollbars?: VirtuosoScrollbarProps; // 스크롤바 커스터마이징 옵션
+    scrollbars?: VDTOverlayScrollbarProps; // 스크롤바 커스터마이징 옵션
     LoadingComponent?: React.ComponentType<{
         visible?: boolean;
         onComplete?: () => void;

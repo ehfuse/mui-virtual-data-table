@@ -1,4 +1,4 @@
-# Virtual Data Table
+# MUI Virtual Data Table
 
 A high-performance virtual data table component for React with Material-UI integration.
 
@@ -29,7 +29,7 @@ React와 Material-UI 통합을 위한 고성능 가상화 데이터 테이블 �
 ## Installation
 
 ```bash
-npm install virtual-data-table
+npm install @ehfuse/mui-virtual-data-table
 ```
 
 ## Peer Dependencies
@@ -44,7 +44,7 @@ npm install react react-dom @mui/material react-virtuoso
 
 ```tsx
 import React from "react";
-import { VirtualDataTable, DataColumn } from "virtual-data-table";
+import { VirtualDataTable, DataColumn } from "@ehfuse/mui-virtual-data-table";
 
 interface User {
     id: number;

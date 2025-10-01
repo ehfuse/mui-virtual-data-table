@@ -49,7 +49,6 @@ import { TableVirtuoso } from "react-virtuoso";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 
-import { VirtuosoScrollbar } from "./components/Scrollbar";
 import OverlayScrollbar from "./OverlayScrollbar";
 import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
 
