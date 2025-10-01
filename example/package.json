@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ehfuse/mui-fadeout-loading-progress": "^1.0.0",
+    "@ehfuse/overlay-scrollbar": "^1.4.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
+    "@types/node": "^24.6.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-virtuoso": "^4.14.1"

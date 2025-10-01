@@ -1,27 +1,24 @@
 /**
  * VirtualDataTable.tsx
  *
- * MIT License
+ * @license Proprietary License (독점 라이선스)
+ * @copyright 2025 김영진 (Kim Young Jin)
+ * @author 김영진 (ehfuse@gmail.com)
+ * @contact 010-3094-9944
  *
- import { VirtuosoScrollbar } from './components/Scrollbar'; Copyright (c) 2025 KIM YOUNG JIN (ehfuse@gmail.com)
+ * IMPORTANT NOTICE (중요 공지):
+ * This code is the intellectual property of 김영진 (Kim Young Jin).
+ * All rights reserved. Unauthorized copying, modification, distribution,
+ * or use of this code is strictly prohibited without prior written
+ * permission from the copyright holder.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * 이 코드는 김영진의 지적재산권입니다.
+ * 모든 권리가 보호됩니다. 저작권자의 사전 서면 허가 없이
+ * 무단 복사, 수정, 배포 또는 사용을 엄격히 금지합니다.
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * For licensing inquiries, please contact (라이선스 문의):
+ * Email: ehfuse@gmail.com
+ * Phone: 010-3094-9944
  */
 
 import React, {
@@ -42,63 +39,71 @@ import {
     TableHead,
     TableRow as MuiTableRow,
     TableSortLabel,
-    Paper,
-    CircularProgress,
 } from "@mui/material";
-import { TableVirtuoso } from "react-virtuoso";
-import type { TableComponents } from "react-virtuoso";
-import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
+import { TableComponents, TableVirtuoso } from "react-virtuoso";
+import { Paper } from "@/pages/elim/components/Paper";
+import { EmptyDataIcon } from "@/icons/EmptyDataIcon";
 
-import { VirtuosoScrollbar } from "./components/Scrollbar";
-import OverlayScrollbar from "./OverlayScrollbar";
-import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
+import { Loading } from "@/pages/elim/components/Loading";
+import { VirtuosoScrollbar } from "./VirtuosoScrollbar";
 
-// OverlayScrollbar 설정을 컴포넌트 외부에 상수로 선언 (재렌더링 시 동일한 참조 유지)
-const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
-    alignment: "right" as const,
-    margin: 0,
-    radius: 0,
-};
+/**
+ * 테이블 컬럼 정의 인터페이스
+ */
+export interface DataColumn<T> {
+    /** 컬럼 식별자 (데이터 객체의 키) */
+    id: keyof T | string;
+    /** 컬럼 헤더에 표시될 레이블 */
+    label: string | React.ReactNode;
+    /** 컬럼 너비 (px 또는 %) */
+    width?: string | number;
+    /** 정렬 가능 여부 */
+    sortable?: boolean;
+    /** 텍스트 정렬 방향 */
+    align?: "left" | "center" | "right";
+    /** 추가 스타일 */
+    style?: React.CSSProperties;
+    /** 커스텀 렌더링 함수 */
+    render?: (item: T, index: number) => React.ReactNode;
+    /** 그룹 헤더명 */
+    group?: string;
+}
 
-// Scroller 컴포넌트를 외부로 분리 (재렌더링 시에도 동일한 참조 유지)
-const VirtuosoScroller = forwardRef<HTMLDivElement, any>((props, ref) => {
-    const scrollContainerRef = useRef<HTMLElement | null>(null);
+/** 정렬 방향 타입 */
+export type SortDirection = "asc" | "desc";
 
-    return (
-        <OverlayScrollbar track={OVERLAY_SCROLLBAR_TRACK_CONFIG}>
-            <TableContainer
-                component={Box}
-                {...props}
-                ref={(node) => {
-                    scrollContainerRef.current = node as HTMLElement;
-                    if (typeof ref === "function") {
-                        ref(node as HTMLDivElement);
-                    } else if (ref) {
-                        ref.current = node as HTMLDivElement;
-                    }
-                }}
-                sx={{
-                    userSelect: "auto",
-                    WebkitUserSelect: "auto",
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                    overflow: "auto",
-                    display: "flex",
-                    flexDirection: "column",
-                    scrollbarWidth: "none",
-                    msOverflowStyle: "none",
-                    "&::-webkit-scrollbar": {
-                        display: "none",
-                    },
-                    "& .MuiTable-root": {
-                        paddingRight: "16px",
-                    },
-                }}
-            />
-        </OverlayScrollbar>
-    );
-});
+export interface SortableFilter {
+    sortBy?: string;
+    sortDirection?: SortDirection;
+}
+
+/**
+ * 데이터 기반 가상화 테이블 컴포넌트 Props
+ */
+export interface VirtualDataTableProps<T> {
+    /** 표시할 데이터 배열 */
+    data: T[];
+    /** 총 데이터 개수 */
+    totalCount: number;
+    /** 로딩 상태 */
+    loading?: boolean;
+    /** 더 많은 데이터가 있는지 여부 */
+    hasMore?: boolean;
+    /** 테이블 컬럼 정의 */
+    columns: DataColumn<T>[];
+    /** 행 클릭 이벤트 핸들러 */
+    onRowClick?: (item: T, index: number) => void;
+    /** 행 높이 (px) */
+    rowHeight?: number;
+    /** 정렬 이벤트 핸들러 */
+    onSort?: (columnId: string, direction: SortDirection) => void;
+    /** 더 많은 데이터 로드 요청 핸들러 */
+    onLoadMore?: (offset: number, limit: number) => void;
+    /** 현재 정렬 상태 */
+    sortBy?: string;
+    sortDirection?: SortDirection;
+    showPaper?: boolean;
+}
 
 /**
  * 데이터 기반 무한 스크롤 및 가상화를 지원하는 테이블 컴포넌트
@@ -115,16 +120,14 @@ function VirtualDataTableComponent<T>({
     sortBy,
     sortDirection,
     showPaper = true,
-    scrollbars,
-    LoadingComponent,
 }: VirtualDataTableProps<T>) {
-    console.log("=== VirtualDataTable 렌더링 ===", {
-        dataLength: data.length,
-        loading,
-        hasMore,
-        columnsLength: columns.length,
-        timestamp: new Date().toISOString(),
-    });
+    // console.log("VirtualDataTable 렌더링:", {
+    //     dataLength: data.length,
+    //     totalCount,
+    //     hasMore,
+    //     loading,
+    //     columnsLength: columns.length,
+    // });
 
     // 로딩 상태 관리
     const [internalLoading, setInternalLoading] = useState(loading);
@@ -135,16 +138,10 @@ function VirtualDataTableComponent<T>({
             // 로딩이 시작되면 즉시 표시
             setInternalLoading(true);
         } else {
-            // 로딩이 끝나면
-            if (LoadingComponent) {
-                // 커스텀 LoadingComponent가 있으면 visible={false}로 페이드아웃 시작
-                // internalLoading은 handleLoadingComplete에서 false로 설정됨
-            } else {
-                // 기본 CircularProgress는 바로 숨김
-                setInternalLoading(false);
-            }
+            // 로딩이 끝나도 internalLoading은 handleLoadingComplete에서만 false로 설정
+            // Loading 컴포넌트에서는 visible={false}로 페이드아웃을 시작함
         }
-    }, [loading, LoadingComponent]);
+    }, [loading]);
 
     // 로딩 완료 핸들러 - Loading 컴포넌트의 페이드아웃이 완료된 후 호출됨
     const handleLoadingComplete = useCallback(() => {
@@ -154,30 +151,42 @@ function VirtualDataTableComponent<T>({
     // 초기 로딩 스피너 표시 조건
     const shouldShowInitialLoading = internalLoading;
 
-    // 더보기 로딩 여부 (데이터가 있고 로딩 중이면 더보기 로딩)
-    const isLoadMoreLoading = loading && data.length > 0;
-
     // 무한 스크롤 로딩 상태 (기존 VirtualDataTable 방식)
     const isLoadingMoreRef = useRef(false);
-    const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
 
-    // 스크롤 컨테이너 참조 (OverlayScrollbar용)
-    const scrollContainerRef = useRef<HTMLElement | null>(null); // 드래그 스크롤 상태 (OverlayScrollbar 사용시에는 비활성화)
-    const isDraggingRef = useRef(false);
-    const dragStartRef = useRef({ x: 0, y: 0, scrollTop: 0 });
-    const isMouseDownRef = useRef(false);
-    const initialScrollTopRef = useRef(0);
-    const totalDragDistanceRef = useRef(0);
+    // 드래그 스크롤 상태 (ref로만 관리하여 불필요한 리렌더링 방지)
+    const isDraggingRef = useRef(false); // 드래그 중 여부
+    const dragStartRef = useRef({ x: 0, y: 0, scrollTop: 0 }); // 드래그 시작 위치
+    const isMouseDownRef = useRef(false); // 마우스 버튼 누름 여부
+    const scrollContainerRef = useRef<HTMLElement | null>(null); // 스크롤 컨테이너 요소
+    const initialScrollTopRef = useRef(0); // 드래그 시작 시 스크롤 위치
+    const totalDragDistanceRef = useRef(0); // 누적 드래그 거리
 
     /**
      * 마우스 버튼 누름 이벤트 핸들러
-     * OverlayScrollbar 사용시에는 기본 드래그 스크롤을 비활성화
+     * 드래그 스크롤 기능의 시작점
      */
     const handleMouseDown = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
-            // OverlayScrollbar를 사용하므로 기본 드래그 스크롤 비활성화
-            // OverlayScrollbar가 자체적으로 스크롤을 처리함
-            return;
+            if (e.button !== 0) return; // 왼쪽 마우스 버튼만 처리
+
+            const scrollElement = scrollContainerRef.current;
+            if (!scrollElement) return;
+
+            // 드래그 상태 초기화
+            isDraggingRef.current = false;
+            isMouseDownRef.current = true;
+
+            // 드래그 시작 시점의 정보 저장
+            const currentScrollTop = scrollElement.scrollTop;
+            initialScrollTopRef.current = currentScrollTop;
+            totalDragDistanceRef.current = 0;
+
+            dragStartRef.current = {
+                x: e.clientX,
+                y: e.clientY,
+                scrollTop: currentScrollTop,
+            };
         },
         []
     );
@@ -335,7 +344,7 @@ function VirtualDataTableComponent<T>({
                 const offset = data.length;
                 const limit = 50;
 
-                console.log(">>> loadMore 호출 직전", {
+                console.debug("VirtualDataTable: 더 많은 데이터 로드 요청", {
                     offset,
                     limit,
                     range,
@@ -343,12 +352,9 @@ function VirtualDataTableComponent<T>({
                     bufferSize,
                     endIndex: range.endIndex,
                     threshold: data.length - bufferSize,
-                    timestamp: new Date().toISOString(),
                 });
 
                 onLoadMore(offset, limit);
-
-                console.log(">>> loadMore 호출 완료");
             }
         },
         [data.length, hasMore, loading, onLoadMore]
@@ -418,7 +424,7 @@ function VirtualDataTableComponent<T>({
                                 padding: "16px",
                             }}
                         >
-                            {col.sortable ? (
+                            {col.sortable && onSort ? (
                                 <div
                                     style={{
                                         display: "flex",
@@ -449,7 +455,7 @@ function VirtualDataTableComponent<T>({
                                             handleSort(String(col.id))
                                         }
                                     >
-                                        {col.text}
+                                        {col.label}
                                         <TableSortLabel
                                             active={sortBy === col.id}
                                             direction={
@@ -493,7 +499,7 @@ function VirtualDataTableComponent<T>({
                                     </Box>
                                 </div>
                             ) : (
-                                col.text
+                                col.label
                             )}
                         </TableCell>
                     ))}
@@ -549,7 +555,7 @@ function VirtualDataTableComponent<T>({
                                 }}
                                 onClick={() => handleSort(String(col.id))}
                             >
-                                {col.text}
+                                {col.label}
                                 <TableSortLabel
                                     active={sortBy === col.id}
                                     direction={
@@ -596,7 +602,7 @@ function VirtualDataTableComponent<T>({
                             </Box>
                         </div>
                     ) : (
-                        col.text
+                        col.label
                     )}
                 </TableCell>
             )),
@@ -667,7 +673,7 @@ function VirtualDataTableComponent<T>({
                                     }}
                                     onClick={() => handleSort(String(col.id))}
                                 >
-                                    {col.text}
+                                    {col.label}
                                     <TableSortLabel
                                         active={sortBy === col.id}
                                         direction={
@@ -714,7 +720,7 @@ function VirtualDataTableComponent<T>({
                                 </Box>
                             </div>
                         ) : (
-                            col.text
+                            col.label
                         )}
                     </TableCell>
                 )),
@@ -768,8 +774,36 @@ function VirtualDataTableComponent<T>({
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
     const VirtuosoTableComponents: TableComponents<T> = useMemo(
         () => ({
-            // 스크롤 컨테이너 (외부에서 정의한 안정적인 컴포넌트 사용)
-            Scroller: VirtuosoScroller,
+            // 스크롤 컨테이너 (VirtuosoScrollbar 사용)
+            Scroller: forwardRef<HTMLDivElement>((props, ref) => (
+                <VirtuosoScrollbar>
+                    <TableContainer
+                        component={Box}
+                        {...props}
+                        ref={(node) => {
+                            scrollContainerRef.current = node as HTMLElement;
+                            if (typeof ref === "function") {
+                                ref(node as HTMLDivElement);
+                            } else if (ref) {
+                                ref.current = node as HTMLDivElement;
+                            }
+                        }}
+                        onMouseDown={handleMouseDown}
+                        sx={{
+                            userSelect: "auto",
+                            WebkitUserSelect: "auto",
+                            position: "relative",
+                            // 기본 스크롤바 완전히 숨김
+                            overflow: "auto",
+                            scrollbarWidth: "none", // Firefox
+                            msOverflowStyle: "none", // IE/Edge
+                            "& .MuiTable-root": {
+                                paddingRight: "16px",
+                            },
+                        }}
+                    />
+                </VirtuosoScrollbar>
+            )),
             // 테이블 컴포넌트
             Table: (props) => (
                 <Table
@@ -805,15 +839,30 @@ function VirtualDataTableComponent<T>({
                 )
             ),
             // 테이블 행 (클릭 이벤트 및 호버 효과 포함)
-            TableRow: (props: any) => {
+            TableRow: forwardRef<HTMLTableRowElement, any>((props, ref) => {
                 const { item, ...rest } = props as any;
                 return (
                     <MuiTableRow
                         {...rest}
+                        ref={ref}
                         onClick={() => {
                             if (!isDraggingRef.current && item && onRowClick) {
                                 onRowClick(item, props.index || 0);
                             }
+                        }}
+                        onMouseEnter={(
+                            e: React.MouseEvent<HTMLTableRowElement>
+                        ) => {
+                            // 행 클릭 가능한 경우에만 포인터 커서 표시
+                            if (onRowClick) {
+                                e.currentTarget.style.cursor = "pointer";
+                            }
+                        }}
+                        onMouseLeave={(
+                            e: React.MouseEvent<HTMLTableRowElement>
+                        ) => {
+                            // 기본 커서로 복원
+                            e.currentTarget.style.cursor = "";
                         }}
                         sx={{
                             userSelect: "none",
@@ -828,7 +877,7 @@ function VirtualDataTableComponent<T>({
                         }}
                     />
                 );
-            },
+            }),
             // 테이블 바디
             TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
                 <MuiTableBody {...props} ref={ref} />
@@ -853,7 +902,6 @@ function VirtualDataTableComponent<T>({
         <Box sx={{ position: "relative", height: "100%", width: "100%" }}>
             {/* 데이터가 있고 로딩이 완료된 경우에만 테이블 표시 */}
             <TableVirtuoso
-                ref={virtuosoRef}
                 data={data}
                 totalCount={hasMore ? data.length + 1 : data.length}
                 fixedHeaderContent={fixedHeaderContent}
@@ -863,26 +911,12 @@ function VirtualDataTableComponent<T>({
                 style={{ height: "100%" }}
                 increaseViewportBy={{ top: 100, bottom: 300 }}
                 overscan={5}
-                followOutput={false}
             />
 
             {/* 빈 데이터 표시 */}
             {data.length === 0 && !loading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                    <Box
-                        sx={{
-                            width: 48,
-                            height: 48,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            borderRadius: "50%",
-                            backgroundColor: "#f5f5f5",
-                            color: "#999",
-                        }}
-                    >
-                        📄
-                    </Box>
+                    <EmptyDataIcon />
                     <div className="font-suit" style={{ color: "#777777" }}>
                         NO DATA
                     </div>
@@ -891,59 +925,28 @@ function VirtualDataTableComponent<T>({
 
             {/* 초기 로딩 스피너 */}
             {shouldShowInitialLoading && (
-                <Box
-                    className="loading-overlay"
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "absolute",
-                        top: 0,
+                <div
+                    className="absolute flex items-center justify-center"
+                    style={{
+                        top: "56px", // 헤더 높이만큼 아래에서 시작
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        height: "100%",
-                        // 더보기 로딩 시에는 배경 투명, 초기 로딩 시에는 반투명
-                        backgroundColor: isLoadMoreLoading
-                            ? "transparent"
-                            : "rgba(255, 255, 255, 0.8)",
-                        pointerEvents: isLoadMoreLoading ? "none" : "auto",
+                        zIndex: 10,
                     }}
                 >
-                    {LoadingComponent ? (
-                        <LoadingComponent
-                            visible={loading}
-                            onComplete={handleLoadingComplete}
-                        />
-                    ) : (
-                        <LoadingProgress
-                            visible={loading}
-                            onComplete={handleLoadingComplete}
-                            size={40}
-                            background={{
-                                show: !isLoadMoreLoading,
-                                opacity: 0,
-                            }}
-                        />
-                    )}
-                </Box>
+                    <Loading
+                        visible={loading}
+                        exitDelay={100}
+                        onComplete={handleLoadingComplete}
+                    />
+                </div>
             )}
         </Box>
     );
 
     return showPaper ? (
-        <Paper
-            className="grow"
-            style={{
-                padding: 0,
-                paddingLeft: "1rem",
-                height: "100%",
-                minHeight: 0,
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-            }}
-        >
+        <Paper className="grow" style={{ padding: 0, paddingLeft: "1rem" }}>
             {tableContent}
         </Paper>
     ) : (

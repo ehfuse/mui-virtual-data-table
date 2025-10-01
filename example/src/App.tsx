@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import {
     CssBaseline,
@@ -8,8 +8,6 @@ import {
     Button,
     Switch,
     FormControlLabel,
-    CircularProgress,
-    Fade,
 } from "@mui/material";
 import { VirtualDataTable } from "../../src/VirtualDataTable";
 import type { DataColumn } from "../../src/types";
@@ -62,45 +60,13 @@ const generateTestData = (count: number): User[] => {
     }));
 };
 
-// 커스텀 로딩 컴포넌트
-const CustomLoading = ({
-    visible = true,
-    onComplete,
-}: {
-    visible?: boolean;
-    onComplete?: () => void;
-}) => {
-    return (
-        <Fade in={visible} timeout={300} onExited={onComplete}>
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 2,
-                    bgcolor: "rgba(255, 255, 255, 0.9)",
-                    p: 3,
-                    borderRadius: 2,
-                    boxShadow: 2,
-                }}
-            >
-                <CircularProgress size={40} />
-                <Typography variant="body2" color="text.secondary">
-                    데이터를 불러오는 중...
-                </Typography>
-            </Box>
-        </Fade>
-    );
-};
-
 function App() {
     const [darkMode, setDarkMode] = useState(false);
-    const [data, setData] = useState<User[]>(() => generateTestData(100));
-    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true); // 초기 로딩 상태
+    const [hasMore, setHasMore] = useState(true);
+    const [sortBy, setSortBy] = useState<string>();
+    const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
     // MUI 테마 설정
     const theme = createTheme({
@@ -109,60 +75,150 @@ function App() {
         },
     });
 
-    // 컬럼 정의
-    const columns: DataColumn<User>[] = [
-        {
-            id: "id",
-            text: "ID",
-            width: 80,
-            sortable: true,
-        },
-        {
-            id: "name",
-            text: "이름",
-            width: 120,
-            sortable: true,
-        },
-        {
-            id: "email",
-            text: "이메일",
-            width: 200,
-            sortable: true,
-        },
-        {
-            id: "age",
-            text: "나이",
-            width: 80,
-            sortable: true,
-            align: "center",
-        },
-        {
-            id: "city",
-            text: "도시",
-            width: 100,
-            sortable: true,
-        },
-        {
-            id: "isActive",
-            text: "활성",
-            width: 80,
-            sortable: true,
-            align: "center",
-            render: (user: User) => (
-                <span style={{ color: user.isActive ? "green" : "red" }}>
-                    {user.isActive ? "활성" : "비활성"}
-                </span>
-            ),
-        },
-    ];
+    // 컴럼 정의 - useMemo로 메모이제이션하여 불필요한 재렌더링 방지
+    const columns: DataColumn<User>[] = useMemo(
+        () => [
+            {
+                id: "id",
+                text: "ID",
+                width: 80,
+                sortable: true,
+            },
+            {
+                id: "name",
+                text: "이름",
+                width: 120,
+                sortable: true,
+            },
+            {
+                id: "email",
+                text: "이메일",
+                width: 200,
+                sortable: true,
+            },
+            {
+                id: "age",
+                text: "나이",
+                width: 80,
+                sortable: true,
+                align: "center",
+            },
+            {
+                id: "city",
+                text: "도시",
+                width: 100,
+                sortable: true,
+            },
+            {
+                id: "isActive",
+                text: "활성",
+                width: 80,
+                sortable: true,
+                align: "center",
+                render: (user: User) => (
+                    <span style={{ color: user.isActive ? "green" : "red" }}>
+                        {user.isActive ? "활성" : "비활성"}
+                    </span>
+                ),
+            },
+        ],
+        []
+    );
 
-    // 더 많은 데이터 로드 시뮬레이션
+    // 정렬 핸들러 - useCallback으로 메모이제이션
+    const handleSort = useCallback(
+        (columnId: string, direction: "asc" | "desc") => {
+            console.log(`정렬: ${columnId} ${direction}`);
+            setSortBy(columnId);
+            setSortDirection(direction);
+
+            // 실제 데이터 정렬
+            const sortedData = [...data].sort((a, b) => {
+                const aValue = a[columnId as keyof User];
+                const bValue = b[columnId as keyof User];
+
+                if (typeof aValue === "string" && typeof bValue === "string") {
+                    return direction === "asc"
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                }
+
+                if (typeof aValue === "number" && typeof bValue === "number") {
+                    return direction === "asc"
+                        ? aValue - bValue
+                        : bValue - aValue;
+                }
+
+                if (
+                    typeof aValue === "boolean" &&
+                    typeof bValue === "boolean"
+                ) {
+                    return direction === "asc"
+                        ? (aValue ? 1 : 0) - (bValue ? 1 : 0)
+                        : (bValue ? 1 : 0) - (aValue ? 1 : 0);
+                }
+
+                return 0;
+            });
+
+            setData(sortedData);
+        },
+        [data]
+    );
+
+    // 초기 데이터 로딩
+    useEffect(() => {
+        const initialLoad = async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const initialData = generateTestData(50);
+            setData(initialData);
+            setLoading(false);
+        };
+        initialLoad();
+    }, []);
+
+    // 무한 스크롤 - 더 많은 데이터 로드 - useCallback으로 메모이제이션
+    const handleLoadMore = useCallback(
+        async (offset: number, limit: number) => {
+            console.log(`무한 스크롤: offset=${offset}, limit=${limit}`);
+            setLoading(true);
+
+            // 네트워크 지연 시뮬레이션
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // 50개씩 추가로 로드
+            const newData = generateTestData(50);
+            const updatedData = newData.map((item, index) => ({
+                ...item,
+                id: data.length + index + 1, // ID 중복 방지
+            }));
+
+            setData((prev) => [...prev, ...updatedData]);
+            setLoading(false);
+
+            // 500개까지만 로드하고 hasMore false로 설정
+            if (data.length + updatedData.length >= 500) {
+                setHasMore(false);
+            }
+        },
+        [data.length]
+    );
+
+    // 수동 데이터 추가 (기존 버튼용)
     const loadMoreData = async () => {
         setLoading(true);
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const newData = generateTestData(500);
-        setData((prev) => [...prev, ...newData]);
+        const updatedData = newData.map((item, index) => ({
+            ...item,
+            id: data.length + index + 1,
+        }));
+        setData((prev) => [...prev, ...updatedData]);
         setLoading(false);
+
+        if (data.length + updatedData.length >= 500) {
+            setHasMore(false);
+        }
     };
 
     return (
@@ -217,9 +273,11 @@ function App() {
                 <Box
                     sx={{
                         height: 600,
+                        width: 1000,
                         border: 1,
                         borderColor: "divider",
                         borderRadius: 1,
+                        mx: "auto", // 가운데 정렬
                     }}
                 >
                     <VirtualDataTable<User>
@@ -227,8 +285,11 @@ function App() {
                         columns={columns}
                         totalCount={data.length}
                         loading={loading}
-                        hasMore={false}
-                        LoadingComponent={CustomLoading}
+                        hasMore={hasMore}
+                        onLoadMore={handleLoadMore}
+                        sortBy={sortBy}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
                         onRowClick={(item: User) => {
                             console.log("Row clicked:", item);
                             alert(
