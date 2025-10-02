@@ -1,6 +1,6 @@
 {
     "name": "@ehfuse/mui-virtual-data-table",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "A high-performance virtual data table component for React with Material-UI integration",
     "type": "module",
     "main": "dist/index.js",

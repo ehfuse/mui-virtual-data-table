@@ -202,6 +202,7 @@ function VirtualDataTableComponent<T>({
     const initialScrollTopRef = useRef(0);
     const totalDragDistanceRef = useRef(0);
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
+    const mouseDownPositionRef = useRef({ x: 0, y: 0 }); // 마우스 다운 시작 위치
     const scrollDragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     /**
@@ -351,8 +352,8 @@ function VirtualDataTableComponent<T>({
             }
             (window as any).lastRangeChangeTime = now;
 
-            // 더 보수적인 조건: 85% 지점에서 로드 (기존 VirtualDataTable 방식)
-            const bufferSize = Math.max(10, Math.floor(data.length * 0.15)); // 데이터의 15% 또는 최소 10개
+            // 더 보수적인 조건: 90% 지점에서 로드 (기존 VirtualDataTable 방식)
+            const bufferSize = Math.max(10, Math.floor(data.length * 0.1)); // 데이터의 10% 또는 최소 10개
             const shouldLoadMore = range.endIndex >= data.length - bufferSize;
 
             // 추가 조건: 최소 30개 이상의 데이터에서만 더 가져오기 실행
@@ -850,13 +851,30 @@ function VirtualDataTableComponent<T>({
                 return (
                     <MuiTableRow
                         {...rest}
-                        onMouseDown={() => {
-                            // 마우스 다운 시 드래그 플래그 초기화
+                        onMouseDown={(e: any) => {
+                            // 마우스 다운 시 드래그 플래그 초기화 및 시작 위치 저장
                             isScrollDraggingRef.current = false;
+                            mouseDownPositionRef.current = {
+                                x: e.clientX,
+                                y: e.clientY,
+                            };
                         }}
-                        onMouseMove={() => {
-                            // 마우스가 눌린 상태로 움직이면 드래그로 간주
-                            isScrollDraggingRef.current = true;
+                        onMouseMove={(e: any) => {
+                            // 마우스가 5px 이상 움직였을 때만 드래그로 간주
+                            const deltaX = Math.abs(
+                                e.clientX - mouseDownPositionRef.current.x
+                            );
+                            const deltaY = Math.abs(
+                                e.clientY - mouseDownPositionRef.current.y
+                            );
+                            const dragThreshold = 5; // 5px 임계값
+
+                            if (
+                                deltaX > dragThreshold ||
+                                deltaY > dragThreshold
+                            ) {
+                                isScrollDraggingRef.current = true;
+                            }
                         }}
                         onClick={() => {
                             // 드래그 스크롤이 아니고, 아이템이 있고, onRowClick이 있을 때만 실행
