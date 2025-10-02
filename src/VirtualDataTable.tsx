@@ -50,12 +50,7 @@ import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 
 import OverlayScrollbar from "@ehfuse/overlay-scrollbar";
-import type {
-    DataColumn,
-    SortDirection,
-    VirtualDataTableProps,
-    VDTOverlayScrollbarProps,
-} from "./types";
+import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
 
 // OverlayScrollbar 설정을 컴포넌트 외부에 상수로 선언 (재렌더링 시 동일한 참조 유지)
 const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
@@ -107,6 +102,7 @@ function VirtualDataTableComponent<T>({
                 return (
                     <OverlayScrollbar
                         track={OVERLAY_SCROLLBAR_TRACK_CONFIG}
+                        contentStyle={{ height: "100%" }}
                         {...scrollbars}
                     >
                         <TableContainer
