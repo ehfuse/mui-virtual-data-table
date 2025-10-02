@@ -108,6 +108,10 @@ function App() {
     columnHeight={number}                   // Header height in px (default: 56, auto 2x for grouped headers)
     showPaper={boolean}                     // Wrap in Paper component (default: true)
     paddingX={string | number}              // Horizontal padding (default: "1rem")
+    paddingTop={string | number}            // Top padding (default: 0)
+    paddingBottom={string | number}         // Bottom padding (default: 0)
+    rowHoverColor={string}                  // Row hover background color (default: "#000000", auto-inverted brightness in dark mode)
+    rowHoverOpacity={number}                // Row hover opacity 0-1 (default: 0.06)
 
     // Optional - Infinite Scroll
     loading={boolean}                       // Loading state (default: false)

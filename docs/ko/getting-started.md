@@ -69,9 +69,13 @@ function App() {
 | `striped`      | `boolean \| string` | `false`  | 얼룩말 줄무늬 활성화. `true`면 기본 회색(#f5f5f5), 문자열이면 해당 색상 사용 |
 | `rowDivider`   | `boolean`           | `true`   | 행 구분선 표시 여부                                                          |
 | `rowHeight`    | `number`            | `50`     | 행 높이 (px)                                                                 |
-| `columnHeight` | `number`            | `56`     | 컬럼 헤더 높이 (px). 그룹 헤더가 있으면 자동으로 2배 적용                    |
-| `showPaper`    | `boolean`           | `true`   | Material-UI Paper 컴포넌트로 감쌀지 여부                                     |
-| `paddingX`     | `string \| number`  | `"1rem"` | 테이블 좌우 패딩. `0`으로 설정하면 패딩 없음                                 |
+| `columnHeight`   | `number`            | `56`     | 컬럼 헤더 높이 (px). 그룹 헤더가 있으면 자동으로 2배 적용                                             |
+| `showPaper`      | `boolean`           | `true`   | Material-UI Paper 컴포넌트로 감쌀지 여부                                                              |
+| `paddingX`       | `string \| number`  | `"1rem"` | 테이블 좌우 패딩. `0`으로 설정하면 패딩 없음                                                          |
+| `paddingTop`     | `string \| number`  | `0`      | 테이블 상단 패딩                                                                                      |
+| `paddingBottom`  | `string \| number`  | `0`      | 테이블 하단 패딩                                                                                      |
+| `rowHoverColor`  | `string`            | `"#000000"` | 행 호버 시 배경색. 다크 모드에서 자동으로 밝기 반전 (예: 검정→흰색)                                  |
+| `rowHoverOpacity`| `number`            | `0.06`   | 행 호버 시 투명도 (0-1). `rowHoverColor`와 함께 사용하여 은은한 호버 효과 적용                        |
 
 #### 선택 속성 - 무한 스크롤
 
