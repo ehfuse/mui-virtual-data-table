@@ -3,7 +3,7 @@
  *
  * MIT License
  *
- import { VirtuosoScrollbar } from './components/Scrollbar'; Copyright (c) 2025 KIM YOUNG JIN (ehfuse@gmail.com)
+ * Copyright (c) 2025 KIM YOUNG JIN (ehfuse@gmail.com)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,6 +82,10 @@ function VirtualDataTableComponent<T>({
     sortDirection,
     showPaper = true,
     paddingX = "1rem",
+    paddingTop = 0,
+    paddingBottom = 0,
+    rowHoverColor,
+    rowHoverOpacity,
     scrollbars,
     emptyMessage = "NO DATA",
     LoadingComponent,
@@ -137,6 +141,8 @@ function VirtualDataTableComponent<T>({
                                 },
                                 "& .MuiTable-root": {
                                     paddingRight: paddingX,
+                                    paddingTop: paddingTop,
+                                    paddingBottom: paddingBottom,
                                 },
                             }}
                         />
@@ -144,7 +150,7 @@ function VirtualDataTableComponent<T>({
                 );
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [] // 빈 배열: 최초 마운트 시에만 생성, scrollbars와 paddingX는 클로저로 고정
+        [] // 빈 배열: 최초 마운트 시에만 생성, scrollbars, paddingX, paddingTop, paddingBottom은 클로저로 고정
     );
 
     // Striped row 배경색 계산
@@ -195,6 +201,8 @@ function VirtualDataTableComponent<T>({
     const isMouseDownRef = useRef(false);
     const initialScrollTopRef = useRef(0);
     const totalDragDistanceRef = useRef(0);
+    const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
+    const scrollDragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     /**
      * 마우스 버튼 누름 이벤트 핸들러
@@ -226,7 +234,6 @@ function VirtualDataTableComponent<T>({
             // DOM 스타일 직접 변경 (리렌더링 방지)
             if (scrollContainerRef.current) {
                 scrollContainerRef.current.style.userSelect = "none";
-                scrollContainerRef.current.style.webkitUserSelect = "none";
             }
         }
 
@@ -286,7 +293,6 @@ function VirtualDataTableComponent<T>({
         // DOM 스타일 초기화
         if (scrollContainerRef.current) {
             scrollContainerRef.current.style.userSelect = "auto";
-            scrollContainerRef.current.style.webkitUserSelect = "auto";
         }
     }, []);
 
@@ -444,7 +450,6 @@ function VirtualDataTableComponent<T>({
                                 width: col.width,
                                 minWidth: col.width,
                                 ...col.style,
-                                backgroundColor: "#ffffff",
                                 fontWeight: "bold",
                                 position: "sticky",
                                 top: 0,
@@ -546,7 +551,6 @@ function VirtualDataTableComponent<T>({
                         width: col.width,
                         minWidth: col.width,
                         ...col.style,
-                        backgroundColor: "#ffffff",
                         fontWeight: "bold",
                         position: "sticky",
                         top: 0,
@@ -640,7 +644,6 @@ function VirtualDataTableComponent<T>({
                     align="center"
                     colSpan={cols.length}
                     style={{
-                        backgroundColor: "#ffffff",
                         fontWeight: "bold",
                         position: "sticky",
                         top: 0,
@@ -664,7 +667,6 @@ function VirtualDataTableComponent<T>({
                             width: col.width,
                             minWidth: col.width,
                             ...col.style,
-                            backgroundColor: "#ffffff",
                             fontWeight: "bold",
                             position: "sticky",
                             top: 0,
@@ -827,7 +829,6 @@ function VirtualDataTableComponent<T>({
                                 height: columnHeight,
                                 "& th": {
                                     padding: "16px",
-                                    backgroundColor: "#ffffff",
                                     position: "sticky",
                                     top: 0,
                                     zIndex: 2,
@@ -849,10 +850,26 @@ function VirtualDataTableComponent<T>({
                 return (
                     <MuiTableRow
                         {...rest}
+                        onMouseDown={() => {
+                            // 마우스 다운 시 드래그 플래그 초기화
+                            isScrollDraggingRef.current = false;
+                        }}
+                        onMouseMove={() => {
+                            // 마우스가 눌린 상태로 움직이면 드래그로 간주
+                            isScrollDraggingRef.current = true;
+                        }}
                         onClick={() => {
-                            if (!isDraggingRef.current && item && onRowClick) {
+                            // 드래그 스크롤이 아니고, 아이템이 있고, onRowClick이 있을 때만 실행
+                            if (
+                                !isScrollDraggingRef.current &&
+                                !isDraggingRef.current &&
+                                item &&
+                                onRowClick
+                            ) {
                                 onRowClick(item, rowIndex);
                             }
+                            // 클릭 후 플래그 리셋
+                            isScrollDraggingRef.current = false;
                         }}
                         sx={{
                             userSelect: "none",
@@ -873,7 +890,121 @@ function VirtualDataTableComponent<T>({
                             },
                             "&:hover": onRowClick
                                 ? {
-                                      backgroundColor: "#E3EEFA",
+                                      backgroundColor: (theme) => {
+                                          const isDark =
+                                              theme.palette.mode === "dark";
+                                          const defaultColor = "#000000";
+                                          const color =
+                                              rowHoverColor ?? defaultColor;
+                                          const opacity =
+                                              rowHoverOpacity ?? 0.06;
+
+                                          // hex를 rgb로 변환
+                                          const hex = color.replace("#", "");
+                                          let r =
+                                              parseInt(
+                                                  hex.substring(0, 2),
+                                                  16
+                                              ) / 255;
+                                          let g =
+                                              parseInt(
+                                                  hex.substring(2, 4),
+                                                  16
+                                              ) / 255;
+                                          let b =
+                                              parseInt(
+                                                  hex.substring(4, 6),
+                                                  16
+                                              ) / 255;
+
+                                          // 다크 모드일 때 밝기만 반전 (HSL 변환)
+                                          if (isDark) {
+                                              // RGB to HSL
+                                              const max = Math.max(r, g, b);
+                                              const min = Math.min(r, g, b);
+                                              let h = 0,
+                                                  s = 0,
+                                                  l = (max + min) / 2;
+
+                                              if (max !== min) {
+                                                  const d = max - min;
+                                                  s =
+                                                      l > 0.5
+                                                          ? d / (2 - max - min)
+                                                          : d / (max + min);
+
+                                                  switch (max) {
+                                                      case r:
+                                                          h =
+                                                              ((g - b) / d +
+                                                                  (g < b
+                                                                      ? 6
+                                                                      : 0)) /
+                                                              6;
+                                                          break;
+                                                      case g:
+                                                          h =
+                                                              ((b - r) / d +
+                                                                  2) /
+                                                              6;
+                                                          break;
+                                                      case b:
+                                                          h =
+                                                              ((r - g) / d +
+                                                                  4) /
+                                                              6;
+                                                          break;
+                                                  }
+                                              }
+
+                                              // 밝기만 반전 (0.0 <-> 1.0)
+                                              l = 1 - l;
+
+                                              // HSL to RGB
+                                              const hue2rgb = (
+                                                  p: number,
+                                                  q: number,
+                                                  t: number
+                                              ) => {
+                                                  if (t < 0) t += 1;
+                                                  if (t > 1) t -= 1;
+                                                  if (t < 1 / 6)
+                                                      return (
+                                                          p + (q - p) * 6 * t
+                                                      );
+                                                  if (t < 1 / 2) return q;
+                                                  if (t < 2 / 3)
+                                                      return (
+                                                          p +
+                                                          (q - p) *
+                                                              (2 / 3 - t) *
+                                                              6
+                                                      );
+                                                  return p;
+                                              };
+
+                                              if (s === 0) {
+                                                  r = g = b = l;
+                                              } else {
+                                                  const q =
+                                                      l < 0.5
+                                                          ? l * (1 + s)
+                                                          : l + s - l * s;
+                                                  const p = 2 * l - q;
+                                                  r = hue2rgb(p, q, h + 1 / 3);
+                                                  g = hue2rgb(p, q, h);
+                                                  b = hue2rgb(p, q, h - 1 / 3);
+                                              }
+                                          }
+
+                                          return `rgba(${Math.round(
+                                              r * 255
+                                          )}, ${Math.round(
+                                              g * 255
+                                          )}, ${Math.round(
+                                              b * 255
+                                          )}, ${opacity})`;
+                                      },
                                       transition: "background-color 0.2s ease",
                                   }
                                 : {},
@@ -893,6 +1024,8 @@ function VirtualDataTableComponent<T>({
             stripedRowColor,
             rowDivider,
             columnHeight,
+            rowHoverColor,
+            rowHoverOpacity,
             VirtuosoScroller,
         ]
     );
@@ -904,6 +1037,12 @@ function VirtualDataTableComponent<T>({
                 position: "relative",
                 height: "100%",
                 width: "100%",
+                "& .MuiTableHead-root": {
+                    backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                            ? "#1e1e1e !important"
+                            : "#ffffff !important",
+                },
             }}
         >
             {/* 테이블 */}
@@ -1001,7 +1140,8 @@ function VirtualDataTableComponent<T>({
     return showPaper ? (
         <Paper
             className="grow"
-            style={{
+            elevation={1}
+            sx={{
                 padding: 0,
                 paddingLeft: paddingX,
                 height: "100%",

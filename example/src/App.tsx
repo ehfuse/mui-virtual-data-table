@@ -291,8 +291,8 @@ function App() {
                     sx={{
                         height: 600,
                         width: 1000,
-                        border: 1,
-                        borderColor: "divider",
+                        // border: 1,
+                        // borderColor: "divider",
                         borderRadius: 1,
                         mx: "auto", // 가운데 정렬
                     }}
@@ -310,7 +310,7 @@ function App() {
                         onSort={handleSort}
                         // striped={true}
                         // rowDivider={false}
-                        // showPaper={true}
+                        showPaper={true}
                         // paddingX={0}
                         emptyMessage="데이터가 없습니다"
                         onRowClick={(item: User) => {

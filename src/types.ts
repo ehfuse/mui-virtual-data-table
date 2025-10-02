@@ -73,6 +73,10 @@ export interface VirtualDataTableProps<T> {
     sortDirection?: SortDirection; // 현재 정렬 방향
     showPaper?: boolean; // Paper 컴포넌트 표시 여부
     paddingX?: string | number; // 테이블 좌우 패딩 (기본값: "1rem")
+    paddingTop?: string | number; // 테이블 상단 패딩 (기본값: 0)
+    paddingBottom?: string | number; // 테이블 하단 패딩 (기본값: 0)
+    rowHoverColor?: string; // 행 hover 시 배경색 (기본값: "#000000", 다크 모드에서 밝기만 자동 반전)
+    rowHoverOpacity?: number; // 행 hover 시 배경 투명도 0-1 (기본값: 0.06)
     scrollbars?: VDTOverlayScrollbarProps; // 스크롤바 커스터마이징 옵션
     emptyMessage?: string | React.ReactNode; // 데이터가 없을 때 표시할 메시지 (기본값: "NO DATA")
     LoadingComponent?: React.ComponentType<{
