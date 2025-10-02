@@ -102,7 +102,6 @@ function VirtualDataTableComponent<T>({
                 return (
                     <OverlayScrollbar
                         track={OVERLAY_SCROLLBAR_TRACK_CONFIG}
-                        contentStyle={{ height: "100%" }}
                         {...scrollbars}
                     >
                         <TableContainer
