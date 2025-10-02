@@ -85,14 +85,6 @@ function VirtualDataTableComponent<T>({
     emptyMessage = "NO DATA",
     LoadingComponent,
 }: VirtualDataTableProps<T>) {
-    // console.log("=== VirtualDataTable 렌더링 ===", {
-    //     dataLength: data.length,
-    //     loading,
-    //     onLoadMore: !!onLoadMore,
-    //     columnsLength: columns.length,
-    //     timestamp: new Date().toISOString(),
-    // });
-
     // 각 테이블 인스턴스별로 Scroller 컴포넌트 생성 (scrollbars, paddingX를 초기값으로 고정)
     const VirtuosoScroller = useMemo(
         () =>
@@ -101,6 +93,7 @@ function VirtualDataTableComponent<T>({
 
                 return (
                     <OverlayScrollbar
+                        detectInnerScroll={true}
                         track={OVERLAY_SCROLLBAR_TRACK_CONFIG}
                         {...scrollbars}
                     >
