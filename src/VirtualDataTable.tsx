@@ -390,6 +390,17 @@ function VirtualDataTableComponent<T>({
         }
     }, [data.length]);
 
+    // 데이터가 변경되면(정렬, 필터 등) 스크롤을 맨 위로 이동
+    useEffect(() => {
+        if (virtuosoRef.current && data.length > 0) {
+            virtuosoRef.current.scrollToIndex({
+                index: 0,
+                align: "start",
+                behavior: "auto",
+            });
+        }
+    }, [data]);
+
     /**
      * 전역 마우스 이벤트 리스너 설정
      * 드래그가 테이블 영역을 벗어나도 동작하도록 document에 이벤트 리스너 등록
