@@ -390,15 +390,35 @@ function VirtualDataTableComponent<T>({
         }
     }, [data.length]);
 
+    // 이전 데이터 길이를 추적
+    const prevDataLengthRef = useRef(data.length);
+
     // 데이터가 변경되면(정렬, 필터 등) 스크롤을 맨 위로 이동
+    // 단, 무한 스크롤로 데이터가 추가될 때(길이만 증가)는 스크롤 위치 유지
     useEffect(() => {
-        if (virtuosoRef.current && data.length > 0) {
+        const prevLength = prevDataLengthRef.current;
+        const currentLength = data.length;
+
+        // 데이터 길이가 증가한 경우 (무한 스크롤) - 스크롤 위치 유지
+        if (currentLength > prevLength && prevLength > 0) {
+            prevDataLengthRef.current = currentLength;
+            return;
+        }
+
+        // 데이터가 교체된 경우 (정렬, 필터 등) - 스크롤을 맨 위로
+        if (
+            virtuosoRef.current &&
+            currentLength > 0 &&
+            currentLength <= prevLength
+        ) {
             virtuosoRef.current.scrollToIndex({
                 index: 0,
                 align: "start",
                 behavior: "auto",
             });
         }
+
+        prevDataLengthRef.current = currentLength;
     }, [data]);
 
     /**
