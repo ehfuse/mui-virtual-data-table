@@ -140,7 +140,7 @@ function VirtualDataTableComponent<T>({
                 );
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [] // 빈 배열: 최초 마운트 시에만 생성, scrollbars, paddingX, paddingTop, paddingBottom은 클로저로 고정
+        [], // 빈 배열: 최초 마운트 시에만 생성, scrollbars, paddingX, paddingTop, paddingBottom은 클로저로 고정
     );
 
     // Striped row 배경색 계산
@@ -205,7 +205,7 @@ function VirtualDataTableComponent<T>({
             // OverlayScrollbar가 자체적으로 스크롤을 처리함
             return;
         },
-        []
+        [],
     );
 
     /**
@@ -237,7 +237,7 @@ function VirtualDataTableComponent<T>({
             const scrollContainer = scrollContainerRef.current;
             const newScrollTop = Math.max(
                 0,
-                initialScrollTopRef.current + totalDragDistanceRef.current
+                initialScrollTopRef.current + totalDragDistanceRef.current,
             );
 
             // 스크롤 위치 설정
@@ -260,7 +260,7 @@ function VirtualDataTableComponent<T>({
         if (isDraggingRef.current && scrollContainerRef.current) {
             const finalScrollTop = Math.max(
                 0,
-                initialScrollTopRef.current + totalDragDistanceRef.current
+                initialScrollTopRef.current + totalDragDistanceRef.current,
             );
 
             // 스크롤 위치를 여러 번 강제로 설정하여 확실히 고정
@@ -291,11 +291,11 @@ function VirtualDataTableComponent<T>({
     useEffect(() => {
         // sortBy가 변경되면 모든 TableSortLabel 요소의 hover 상태를 강제로 초기화
         const tableContainer = document.querySelector(
-            '[data-testid="virtuoso-scroller"]'
+            '[data-testid="virtuoso-scroller"]',
         );
         if (tableContainer) {
             const sortLabels = tableContainer.querySelectorAll(
-                ".MuiTableSortLabel-root"
+                ".MuiTableSortLabel-root",
             );
             sortLabels.forEach((label) => {
                 // 마우스 이벤트를 시뮬레이션하여 hover 상태 해제
@@ -318,7 +318,7 @@ function VirtualDataTableComponent<T>({
 
             onSort(columnId, newDirection);
         },
-        [onSort, sortBy, sortDirection]
+        [onSort, sortBy, sortDirection],
     );
 
     // 가상화 스크롤 범위 변경 감지 핸들러 (기존 VirtualDataTable 방식)
@@ -375,7 +375,7 @@ function VirtualDataTableComponent<T>({
                 // console.log(">>> loadMore 호출 완료");
             }
         },
-        [data.length, loading, onLoadMore]
+        [data.length, loading, onLoadMore],
     );
 
     // 로딩 상태가 변경되면 isLoadingMoreRef 업데이트 (기존 VirtualDataTable 방식)
@@ -488,8 +488,8 @@ function VirtualDataTableComponent<T>({
                                             col.align === "center"
                                                 ? "center"
                                                 : col.align === "right"
-                                                ? "flex-end"
-                                                : "flex-start",
+                                                  ? "flex-end"
+                                                  : "flex-start",
                                         position: "relative",
                                         width: "100%",
                                     }}
@@ -589,8 +589,8 @@ function VirtualDataTableComponent<T>({
                                     col.align === "center"
                                         ? "center"
                                         : col.align === "right"
-                                        ? "flex-end"
-                                        : "flex-start",
+                                          ? "flex-end"
+                                          : "flex-start",
                                 position: "relative",
                                 width: "100%",
                             }}
@@ -705,8 +705,8 @@ function VirtualDataTableComponent<T>({
                                         col.align === "center"
                                             ? "center"
                                             : col.align === "right"
-                                            ? "flex-end"
-                                            : "flex-start",
+                                              ? "flex-end"
+                                              : "flex-start",
                                     position: "relative",
                                     width: "100%",
                                 }}
@@ -820,7 +820,7 @@ function VirtualDataTableComponent<T>({
                 </>
             );
         },
-        [columns]
+        [columns],
     );
 
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
@@ -859,7 +859,7 @@ function VirtualDataTableComponent<T>({
                             },
                         }}
                     />
-                )
+                ),
             ),
             // 테이블 행 (클릭 이벤트 및 호버 효과 포함)
             // 테이블 행 (클릭 이벤트 및 호버 효과 포함)
@@ -869,9 +869,7 @@ function VirtualDataTableComponent<T>({
                 const rowIndex = rest["data-index"] ?? 0;
                 const isOddRow = rowIndex % 2 === 1;
                 const rowId =
-                    item && getRowId
-                        ? getRowId(item, rowIndex)
-                        : rowIndex;
+                    item && getRowId ? getRowId(item, rowIndex) : rowIndex;
                 const isSelected =
                     selectedRowId !== null &&
                     selectedRowId !== undefined &&
@@ -891,10 +889,10 @@ function VirtualDataTableComponent<T>({
                         onMouseMove={(e: any) => {
                             // 마우스가 5px 이상 움직였을 때만 드래그로 간주
                             const deltaX = Math.abs(
-                                e.clientX - mouseDownPositionRef.current.x
+                                e.clientX - mouseDownPositionRef.current.x,
                             );
                             const deltaY = Math.abs(
-                                e.clientY - mouseDownPositionRef.current.y
+                                e.clientY - mouseDownPositionRef.current.y,
                             );
                             const dragThreshold = 5; // 5px 임계값
 
@@ -921,12 +919,11 @@ function VirtualDataTableComponent<T>({
                         sx={{
                             userSelect: "none",
                             height: rowHeight,
-                            backgroundColor:
-                                isSelected
-                                    ? (theme) => theme.palette.action.selected
-                                    : isOddRow && stripedRowColor
-                                    ? stripedRowColor
-                                    : "transparent",
+                            backgroundColor: isSelected
+                                ? (theme) => theme.palette.action.selected
+                                : isOddRow && stripedRowColor
+                                  ? stripedRowColor
+                                  : "transparent",
                             boxShadow: isSelected
                                 ? (theme) =>
                                       `inset 3px 0 0 ${theme.palette.primary.main}`
@@ -946,7 +943,8 @@ function VirtualDataTableComponent<T>({
                                 ? {
                                       backgroundColor: (theme) => {
                                           if (isSelected) {
-                                              return theme.palette.action.selected;
+                                              return theme.palette.action
+                                                  .selected;
                                           }
                                           const isDark =
                                               theme.palette.mode === "dark";
@@ -961,17 +959,17 @@ function VirtualDataTableComponent<T>({
                                           let r =
                                               parseInt(
                                                   hex.substring(0, 2),
-                                                  16
+                                                  16,
                                               ) / 255;
                                           let g =
                                               parseInt(
                                                   hex.substring(2, 4),
-                                                  16
+                                                  16,
                                               ) / 255;
                                           let b =
                                               parseInt(
                                                   hex.substring(4, 6),
-                                                  16
+                                                  16,
                                               ) / 255;
 
                                           // 다크 모드일 때 밝기만 반전 (HSL 변환)
@@ -1021,7 +1019,7 @@ function VirtualDataTableComponent<T>({
                                               const hue2rgb = (
                                                   p: number,
                                                   q: number,
-                                                  t: number
+                                                  t: number,
                                               ) => {
                                                   if (t < 0) t += 1;
                                                   if (t > 1) t -= 1;
@@ -1055,11 +1053,11 @@ function VirtualDataTableComponent<T>({
                                           }
 
                                           return `rgba(${Math.round(
-                                              r * 255
+                                              r * 255,
                                           )}, ${Math.round(
-                                              g * 255
+                                              g * 255,
                                           )}, ${Math.round(
-                                              b * 255
+                                              b * 255,
                                           )}, ${opacity})`;
                                       },
                                       transition: "background-color 0.2s ease",
@@ -1086,7 +1084,7 @@ function VirtualDataTableComponent<T>({
             rowHoverColor,
             rowHoverOpacity,
             VirtuosoScroller,
-        ]
+        ],
     );
 
     // 공통 테이블 내용
@@ -1231,5 +1229,5 @@ function VirtualDataTableComponent<T>({
 }
 
 export const VirtualDataTable = memo(VirtualDataTableComponent) as <T>(
-    props: VirtualDataTableProps<T>
+    props: VirtualDataTableProps<T>,
 ) => React.JSX.Element;
