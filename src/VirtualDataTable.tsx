@@ -920,13 +920,12 @@ function VirtualDataTableComponent<T>({
                             userSelect: "none",
                             height: rowHeight,
                             backgroundColor: isSelected
-                                ? (theme) => theme.palette.action.selected
+                                ? "#dbeafe"
                                 : isOddRow && stripedRowColor
                                   ? stripedRowColor
                                   : "transparent",
                             boxShadow: isSelected
-                                ? (theme) =>
-                                      `inset 3px 0 0 ${theme.palette.primary.main}`
+                                ? "inset 3px 0 0 #3b82f6"
                                 : "none",
                             "& td": {
                                 padding: "8px 16px",
@@ -943,8 +942,7 @@ function VirtualDataTableComponent<T>({
                                 ? {
                                       backgroundColor: (theme) => {
                                           if (isSelected) {
-                                              return theme.palette.action
-                                                  .selected;
+                                              return "#dbeafe";
                                           }
                                           const isDark =
                                               theme.palette.mode === "dark";
