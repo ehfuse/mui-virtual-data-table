@@ -63,6 +63,8 @@ export interface VirtualDataTableProps<T> {
     loading?: boolean; // 로딩 상태
     columns: DataColumn<T>[]; // 테이블 컬럼 정의
     onRowClick?: (item: T, index: number) => void; // 행 클릭 이벤트 핸들러
+    getRowId?: (item: T, index: number) => string | number; // 행 식별자 반환 함수
+    selectedRowId?: string | number | null; // 강조 표시할 선택 행 식별자
     rowHeight?: number; // 행 높이 (px)
     columnHeight?: number; // 컬럼 헤더 높이 (px, 기본값: 56)
     striped?: string | boolean; // Zebra striping (true: 기본 회색, string: 지정 색상, false: 없음)

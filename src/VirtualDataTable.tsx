@@ -67,6 +67,8 @@ function VirtualDataTableComponent<T>({
     loading = false,
     columns,
     onRowClick,
+    getRowId,
+    selectedRowId,
     rowHeight = 50,
     columnHeight = 56,
     striped,
@@ -866,6 +868,14 @@ function VirtualDataTableComponent<T>({
                 // react-virtuoso는 'data-index' 속성으로 index를 전달합니다
                 const rowIndex = rest["data-index"] ?? 0;
                 const isOddRow = rowIndex % 2 === 1;
+                const rowId =
+                    item && getRowId
+                        ? getRowId(item, rowIndex)
+                        : rowIndex;
+                const isSelected =
+                    selectedRowId !== null &&
+                    selectedRowId !== undefined &&
+                    rowId === selectedRowId;
 
                 return (
                     <MuiTableRow
@@ -912,14 +922,21 @@ function VirtualDataTableComponent<T>({
                             userSelect: "none",
                             height: rowHeight,
                             backgroundColor:
-                                isOddRow && stripedRowColor
+                                isSelected
+                                    ? (theme) => theme.palette.action.selected
+                                    : isOddRow && stripedRowColor
                                     ? stripedRowColor
                                     : "transparent",
+                            boxShadow: isSelected
+                                ? (theme) =>
+                                      `inset 3px 0 0 ${theme.palette.primary.main}`
+                                : "none",
                             "& td": {
                                 padding: "8px 16px",
                                 borderBottom: rowDivider
                                     ? "1px solid rgba(224, 224, 224, 1)"
                                     : "none",
+                                fontWeight: isSelected ? 600 : undefined,
                             },
                             "& th": {
                                 padding: "8px 16px",
@@ -928,6 +945,9 @@ function VirtualDataTableComponent<T>({
                             "&:hover": onRowClick
                                 ? {
                                       backgroundColor: (theme) => {
+                                          if (isSelected) {
+                                              return theme.palette.action.selected;
+                                          }
                                           const isDark =
                                               theme.palette.mode === "dark";
                                           const defaultColor = "#000000";
@@ -1056,6 +1076,8 @@ function VirtualDataTableComponent<T>({
         }),
         [
             onRowClick,
+            getRowId,
+            selectedRowId,
             rowHeight,
             handleMouseDown,
             stripedRowColor,
