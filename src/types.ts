@@ -25,6 +25,7 @@
  */
 
 import React from "react";
+import type { SxProps, Theme } from "@mui/material";
 import { OverlayScrollbarProps } from "@ehfuse/overlay-scrollbar";
 
 /**
@@ -65,6 +66,9 @@ export interface VirtualDataTableProps<T> {
     onRowClick?: (item: T, index: number) => void; // 행 클릭 이벤트 핸들러
     getRowId?: (item: T, index: number) => string | number; // 행 식별자 반환 함수
     selectedRowId?: string | number | null; // 강조 표시할 선택 행 식별자
+    selectedRowSx?:
+        | SxProps<Theme>
+        | ((item: T, index: number) => SxProps<Theme>); // 선택 행 스타일 (기본값: 없음)
     rowHeight?: number; // 행 높이 (px)
     columnHeight?: number; // 컬럼 헤더 높이 (px, 기본값: 56)
     striped?: string | boolean; // Zebra striping (true: 기본 회색, string: 지정 색상, false: 없음)

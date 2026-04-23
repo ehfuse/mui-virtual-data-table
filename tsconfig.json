@@ -14,21 +14,16 @@
         "strict": true,
         "forceConsistentCasingInFileNames": true,
         "module": "ESNext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": false,
         "jsx": "react-jsx",
+        "rootDir": "./src",
         "declaration": true,
         "declarationDir": "./dist",
         "outDir": "./dist",
-        "sourceMap": true,
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "src/*"
-            ]
-        }
+        "sourceMap": true
     },
     "include": [
         "src/**/*"

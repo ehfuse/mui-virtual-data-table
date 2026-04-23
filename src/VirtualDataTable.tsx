@@ -69,6 +69,7 @@ function VirtualDataTableComponent<T>({
     onRowClick,
     getRowId,
     selectedRowId,
+    selectedRowSx,
     rowHeight = 50,
     columnHeight = 56,
     striped,
@@ -874,6 +875,12 @@ function VirtualDataTableComponent<T>({
                     selectedRowId !== null &&
                     selectedRowId !== undefined &&
                     rowId === selectedRowId;
+                const resolvedSelectedRowSx =
+                    isSelected && selectedRowSx
+                        ? typeof selectedRowSx === "function"
+                            ? selectedRowSx(item, rowIndex)
+                            : selectedRowSx
+                        : undefined;
 
                 return (
                     <MuiTableRow
@@ -894,7 +901,7 @@ function VirtualDataTableComponent<T>({
                             const deltaY = Math.abs(
                                 e.clientY - mouseDownPositionRef.current.y,
                             );
-                            const dragThreshold = 5; // 5px 임계값
+                            const dragThreshold = 5;
 
                             if (
                                 deltaX > dragThreshold ||
@@ -904,7 +911,6 @@ function VirtualDataTableComponent<T>({
                             }
                         }}
                         onClick={() => {
-                            // 드래그 스크롤이 아니고, 아이템이 있고, onRowClick이 있을 때만 실행
                             if (
                                 !isScrollDraggingRef.current &&
                                 !isDraggingRef.current &&
@@ -913,155 +919,178 @@ function VirtualDataTableComponent<T>({
                             ) {
                                 onRowClick(item, rowIndex);
                             }
-                            // 클릭 후 플래그 리셋
                             isScrollDraggingRef.current = false;
                         }}
-                        sx={{
-                            userSelect: "none",
-                            height: rowHeight,
-                            backgroundColor: isSelected
-                                ? "#dbeafe"
-                                : isOddRow && stripedRowColor
-                                  ? stripedRowColor
-                                  : "transparent",
-                            boxShadow: isSelected
-                                ? "inset 3px 0 0 #3b82f6"
-                                : "none",
-                            "& td": {
-                                padding: "8px 16px",
-                                borderBottom: rowDivider
-                                    ? "1px solid rgba(224, 224, 224, 1)"
-                                    : "none",
-                                fontWeight: isSelected ? 600 : undefined,
-                            },
-                            "& th": {
-                                padding: "8px 16px",
-                                borderBottom: "none",
-                            },
-                            "&:hover": onRowClick
-                                ? {
-                                      backgroundColor: (theme) => {
-                                          if (isSelected) {
-                                              return "#dbeafe";
-                                          }
-                                          const isDark =
-                                              theme.palette.mode === "dark";
-                                          const defaultColor = "#000000";
-                                          const color =
-                                              rowHoverColor ?? defaultColor;
-                                          const opacity =
-                                              rowHoverOpacity ?? 0.06;
+                        sx={[
+                            {
+                                userSelect: "none",
+                                height: rowHeight,
+                                backgroundColor:
+                                    isOddRow && stripedRowColor
+                                        ? stripedRowColor
+                                        : "transparent",
+                                "& td": {
+                                    padding: "8px 16px",
+                                    borderBottom: rowDivider
+                                        ? "1px solid rgba(224, 224, 224, 1)"
+                                        : "none",
+                                },
+                                "& th": {
+                                    padding: "8px 16px",
+                                    borderBottom: "none",
+                                },
+                                "&:hover":
+                                    onRowClick && !isSelected
+                                        ? {
+                                              backgroundColor: (theme) => {
+                                                  const isDark =
+                                                      theme.palette.mode ===
+                                                      "dark";
+                                                  const defaultColor =
+                                                      "#000000";
+                                                  const color =
+                                                      rowHoverColor ??
+                                                      defaultColor;
+                                                  const opacity =
+                                                      rowHoverOpacity ?? 0.06;
 
-                                          // hex를 rgb로 변환
-                                          const hex = color.replace("#", "");
-                                          let r =
-                                              parseInt(
-                                                  hex.substring(0, 2),
-                                                  16,
-                                              ) / 255;
-                                          let g =
-                                              parseInt(
-                                                  hex.substring(2, 4),
-                                                  16,
-                                              ) / 255;
-                                          let b =
-                                              parseInt(
-                                                  hex.substring(4, 6),
-                                                  16,
-                                              ) / 255;
+                                                  const hex = color.replace(
+                                                      "#",
+                                                      "",
+                                                  );
+                                                  let r =
+                                                      parseInt(
+                                                          hex.substring(0, 2),
+                                                          16,
+                                                      ) / 255;
+                                                  let g =
+                                                      parseInt(
+                                                          hex.substring(2, 4),
+                                                          16,
+                                                      ) / 255;
+                                                  let b =
+                                                      parseInt(
+                                                          hex.substring(4, 6),
+                                                          16,
+                                                      ) / 255;
 
-                                          // 다크 모드일 때 밝기만 반전 (HSL 변환)
-                                          if (isDark) {
-                                              // RGB to HSL
-                                              const max = Math.max(r, g, b);
-                                              const min = Math.min(r, g, b);
-                                              let h = 0,
-                                                  s = 0,
-                                                  l = (max + min) / 2;
+                                                  if (isDark) {
+                                                      const max = Math.max(
+                                                          r,
+                                                          g,
+                                                          b,
+                                                      );
+                                                      const min = Math.min(
+                                                          r,
+                                                          g,
+                                                          b,
+                                                      );
+                                                      let h = 0;
+                                                      let s = 0;
+                                                      let l = (max + min) / 2;
 
-                                              if (max !== min) {
-                                                  const d = max - min;
-                                                  s =
-                                                      l > 0.5
-                                                          ? d / (2 - max - min)
-                                                          : d / (max + min);
+                                                      if (max !== min) {
+                                                          const d = max - min;
+                                                          s =
+                                                              l > 0.5
+                                                                  ? d /
+                                                                    (2 -
+                                                                        max -
+                                                                        min)
+                                                                  : d /
+                                                                    (max + min);
 
-                                                  switch (max) {
-                                                      case r:
-                                                          h =
-                                                              ((g - b) / d +
-                                                                  (g < b
-                                                                      ? 6
-                                                                      : 0)) /
-                                                              6;
-                                                          break;
-                                                      case g:
-                                                          h =
-                                                              ((b - r) / d +
-                                                                  2) /
-                                                              6;
-                                                          break;
-                                                      case b:
-                                                          h =
-                                                              ((r - g) / d +
-                                                                  4) /
-                                                              6;
-                                                          break;
+                                                          switch (max) {
+                                                              case r:
+                                                                  h =
+                                                                      ((g - b) /
+                                                                          d +
+                                                                          (g < b
+                                                                              ? 6
+                                                                              : 0)) /
+                                                                      6;
+                                                                  break;
+                                                              case g:
+                                                                  h =
+                                                                      ((b - r) /
+                                                                          d +
+                                                                          2) /
+                                                                      6;
+                                                                  break;
+                                                              case b:
+                                                                  h =
+                                                                      ((r - g) /
+                                                                          d +
+                                                                          4) /
+                                                                      6;
+                                                                  break;
+                                                          }
+                                                      }
+
+                                                      l = 1 - l;
+
+                                                      const hue2rgb = (
+                                                          p: number,
+                                                          q: number,
+                                                          t: number,
+                                                      ) => {
+                                                          if (t < 0) t += 1;
+                                                          if (t > 1) t -= 1;
+                                                          if (t < 1 / 6) {
+                                                              return (
+                                                                  p +
+                                                                  (q - p) *
+                                                                      6 *
+                                                                      t
+                                                              );
+                                                          }
+                                                          if (t < 1 / 2) {
+                                                              return q;
+                                                          }
+                                                          if (t < 2 / 3) {
+                                                              return (
+                                                                  p +
+                                                                  (q - p) *
+                                                                      (2 / 3 -
+                                                                          t) *
+                                                                      6
+                                                              );
+                                                          }
+                                                          return p;
+                                                      };
+
+                                                      if (s === 0) {
+                                                          r = g = b = l;
+                                                      } else {
+                                                          const q =
+                                                              l < 0.5
+                                                                  ? l * (1 + s)
+                                                                  : l +
+                                                                    s -
+                                                                    l * s;
+                                                          const p = 2 * l - q;
+                                                          r = hue2rgb(
+                                                              p,
+                                                              q,
+                                                              h + 1 / 3,
+                                                          );
+                                                          g = hue2rgb(p, q, h);
+                                                          b = hue2rgb(
+                                                              p,
+                                                              q,
+                                                              h - 1 / 3,
+                                                          );
+                                                      }
                                                   }
-                                              }
 
-                                              // 밝기만 반전 (0.0 <-> 1.0)
-                                              l = 1 - l;
-
-                                              // HSL to RGB
-                                              const hue2rgb = (
-                                                  p: number,
-                                                  q: number,
-                                                  t: number,
-                                              ) => {
-                                                  if (t < 0) t += 1;
-                                                  if (t > 1) t -= 1;
-                                                  if (t < 1 / 6)
-                                                      return (
-                                                          p + (q - p) * 6 * t
-                                                      );
-                                                  if (t < 1 / 2) return q;
-                                                  if (t < 2 / 3)
-                                                      return (
-                                                          p +
-                                                          (q - p) *
-                                                              (2 / 3 - t) *
-                                                              6
-                                                      );
-                                                  return p;
-                                              };
-
-                                              if (s === 0) {
-                                                  r = g = b = l;
-                                              } else {
-                                                  const q =
-                                                      l < 0.5
-                                                          ? l * (1 + s)
-                                                          : l + s - l * s;
-                                                  const p = 2 * l - q;
-                                                  r = hue2rgb(p, q, h + 1 / 3);
-                                                  g = hue2rgb(p, q, h);
-                                                  b = hue2rgb(p, q, h - 1 / 3);
-                                              }
+                                                  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+                                              },
                                           }
-
-                                          return `rgba(${Math.round(
-                                              r * 255,
-                                          )}, ${Math.round(
-                                              g * 255,
-                                          )}, ${Math.round(
-                                              b * 255,
-                                          )}, ${opacity})`;
-                                      },
-                                      transition: "background-color 0.2s ease",
-                                  }
-                                : {},
-                        }}
+                                        : undefined,
+                                cursor: onRowClick ? "pointer" : undefined,
+                            },
+                            resolvedSelectedRowSx,
+                        ]}
                     />
                 );
             },
@@ -1074,6 +1103,7 @@ function VirtualDataTableComponent<T>({
             onRowClick,
             getRowId,
             selectedRowId,
+            selectedRowSx,
             rowHeight,
             handleMouseDown,
             stripedRowColor,
