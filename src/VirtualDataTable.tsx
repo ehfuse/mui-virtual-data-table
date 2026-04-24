@@ -865,7 +865,13 @@ function VirtualDataTableComponent<T>({
             // 테이블 행 (클릭 이벤트 및 호버 효과 포함)
             // 테이블 행 (클릭 이벤트 및 호버 효과 포함)
             TableRow: (props: any) => {
-                const { item, ...rest } = props as any;
+                const {
+                    item,
+                    selected: _selected,
+                    "aria-selected": _ariaSelected,
+                    className,
+                    ...rest
+                } = props as any;
                 // react-virtuoso는 'data-index' 속성으로 index를 전달합니다
                 const rowIndex = rest["data-index"] ?? 0;
                 const isOddRow = rowIndex % 2 === 1;
@@ -881,10 +887,20 @@ function VirtualDataTableComponent<T>({
                             ? selectedRowSx(item, rowIndex)
                             : selectedRowSx
                         : undefined;
+                const sanitizedClassName = String(className ?? "")
+                    .split(/\s+/)
+                    .filter(
+                        (token) =>
+                            token !== "Mui-selected" &&
+                            token !== "Mui-focusVisible",
+                    )
+                    .join(" ");
 
                 return (
                     <MuiTableRow
                         {...rest}
+                        className={sanitizedClassName || undefined}
+                        selected={isSelected}
                         onMouseDown={(e: any) => {
                             // 마우스 다운 시 드래그 플래그 초기화 및 시작 위치 저장
                             isScrollDraggingRef.current = false;
