@@ -90,8 +90,8 @@ function VirtualDataTableComponent<T>({
     emptyMessage = "NO DATA",
     LoadingComponent,
 }: VirtualDataTableProps<T>) {
-    const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
-    const defaultViewportBufferBottom = Math.max(rowHeight * 8, 320);
+    const defaultViewportBufferTop = Math.max(rowHeight * 20, 900);
+    const defaultViewportBufferBottom = Math.max(rowHeight * 20, 900);
     const viewportBufferTop =
         typeof viewportBuffer === "number"
             ? viewportBuffer
@@ -100,8 +100,8 @@ function VirtualDataTableComponent<T>({
         typeof viewportBuffer === "number"
             ? viewportBuffer
             : (viewportBuffer?.bottom ?? defaultViewportBufferBottom);
-    const defaultOverscanMain = Math.max(rowHeight * 4, 220);
-    const defaultOverscanReverse = Math.max(rowHeight * 8, 420);
+    const defaultOverscanMain = Math.max(rowHeight * 15, 800);
+    const defaultOverscanReverse = Math.max(rowHeight * 20, 1000);
     const virtuosoOverscan =
         typeof overscan === "number"
             ? overscan
