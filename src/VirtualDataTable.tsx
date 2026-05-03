@@ -84,10 +84,33 @@ function VirtualDataTableComponent<T>({
     paddingBottom = 0,
     rowHoverColor,
     rowHoverOpacity,
+    viewportBuffer,
+    overscan,
     scrollbars,
     emptyMessage = "NO DATA",
     LoadingComponent,
 }: VirtualDataTableProps<T>) {
+    const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
+    const defaultViewportBufferBottom = Math.max(rowHeight * 8, 320);
+    const viewportBufferTop =
+        typeof viewportBuffer === "number"
+            ? viewportBuffer
+            : (viewportBuffer?.top ?? defaultViewportBufferTop);
+    const viewportBufferBottom =
+        typeof viewportBuffer === "number"
+            ? viewportBuffer
+            : (viewportBuffer?.bottom ?? defaultViewportBufferBottom);
+    const defaultOverscanMain = Math.max(rowHeight * 4, 220);
+    const defaultOverscanReverse = Math.max(rowHeight * 8, 420);
+    const virtuosoOverscan =
+        typeof overscan === "number"
+            ? overscan
+            : {
+                  main: overscan?.main ?? defaultOverscanMain,
+                  reverse: overscan?.reverse ?? defaultOverscanReverse,
+              };
+    const estimatedItemHeight = rowHeight + (rowDivider ? 1 : 0);
+
     // 각 테이블 인스턴스별로 Scroller 컴포넌트 생성 (scrollbars, paddingX를 초기값으로 고정)
     const VirtuosoScroller = useMemo(
         () =>
@@ -1152,13 +1175,17 @@ function VirtualDataTableComponent<T>({
                 ref={virtuosoRef}
                 data={data}
                 totalCount={onLoadMore ? data.length + 1 : data.length}
+                defaultItemHeight={estimatedItemHeight}
                 fixedHeaderContent={fixedHeaderContent}
                 itemContent={rowContent}
                 rangeChanged={handleRangeChange}
                 components={VirtuosoTableComponents}
                 style={{ height: "100%" }}
-                increaseViewportBy={{ top: 100, bottom: 300 }}
-                overscan={5}
+                increaseViewportBy={{
+                    top: viewportBufferTop,
+                    bottom: viewportBufferBottom,
+                }}
+                overscan={virtuosoOverscan}
                 followOutput={false}
             />
 

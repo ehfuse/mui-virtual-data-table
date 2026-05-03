@@ -55,6 +55,18 @@ export interface SortableFilter {
  */
 export type VDTOverlayScrollbarProps = Omit<OverlayScrollbarProps, "children">;
 
+/** 뷰포트 바깥 미리 렌더링 버퍼 범위 타입이다. */
+export interface ViewportBuffer {
+    top?: number;
+    bottom?: number;
+}
+
+/** 가상화 렌더링 overscan 범위 타입이다. */
+export interface VDTOverscan {
+    main?: number;
+    reverse?: number;
+}
+
 /**
  * 데이터 기반 가상화 테이블 컴포넌트 Props
  */
@@ -83,6 +95,8 @@ export interface VirtualDataTableProps<T> {
     paddingBottom?: string | number; // 테이블 하단 패딩 (기본값: 0)
     rowHoverColor?: string; // 행 hover 시 배경색 (기본값: "#000000", 다크 모드에서 밝기만 자동 반전)
     rowHoverOpacity?: number; // 행 hover 시 배경 투명도 0-1 (기본값: 0.06)
+    viewportBuffer?: number | ViewportBuffer; // 뷰포트 위/아래 미리 렌더링 버퍼 px (기본값: rowHeight 기반 자동 계산)
+    overscan?: number | VDTOverscan; // 가상화 overscan 범위 px (기본값: rowHeight 기반 자동 계산)
     scrollbars?: VDTOverlayScrollbarProps; // 스크롤바 커스터마이징 옵션
     emptyMessage?: string | React.ReactNode; // 데이터가 없을 때 표시할 메시지 (기본값: "NO DATA")
     LoadingComponent?: React.ComponentType<{
