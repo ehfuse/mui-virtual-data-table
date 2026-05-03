@@ -397,7 +397,6 @@ function VirtualDataTableComponent<T>({
     const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
 
     // 스크롤 컨테이너 참조 (OverlayScrollbar용)
-    const isDraggingRef = useRef(false);
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
     const mouseDownPositionRef = useRef({ x: 0, y: 0 }); // 마우스 다운 시작 위치
 
@@ -1024,10 +1023,16 @@ function VirtualDataTableComponent<T>({
                                 y: e.clientY,
                             };
                         }}
-                        onClick={() => {
+                        onClick={(e: React.MouseEvent) => {
+                            // mousedown 시작 위치와 click 위치 차이로 드래그 여부 판별
+                            const dx =
+                                e.clientX - mouseDownPositionRef.current.x;
+                            const dy =
+                                e.clientY - mouseDownPositionRef.current.y;
+                            const wasDrag = Math.sqrt(dx * dx + dy * dy) > 5;
                             if (
+                                !wasDrag &&
                                 !isScrollDraggingRef.current &&
-                                !isDraggingRef.current &&
                                 item &&
                                 onRowClick
                             ) {
