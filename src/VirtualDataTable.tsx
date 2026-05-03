@@ -90,8 +90,8 @@ function VirtualDataTableComponent<T>({
     emptyMessage = "NO DATA",
     LoadingComponent,
 }: VirtualDataTableProps<T>) {
-    const defaultViewportBufferTop = Math.max(rowHeight * 20, 900);
-    const defaultViewportBufferBottom = Math.max(rowHeight * 20, 900);
+    const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
+    const defaultViewportBufferBottom = Math.max(rowHeight * 12, 480);
     const viewportBufferTop =
         typeof viewportBuffer === "number"
             ? viewportBuffer
@@ -100,8 +100,8 @@ function VirtualDataTableComponent<T>({
         typeof viewportBuffer === "number"
             ? viewportBuffer
             : (viewportBuffer?.bottom ?? defaultViewportBufferBottom);
-    const defaultOverscanMain = Math.max(rowHeight * 15, 800);
-    const defaultOverscanReverse = Math.max(rowHeight * 20, 1000);
+    const defaultOverscanMain = Math.max(rowHeight * 8, 420);
+    const defaultOverscanReverse = Math.max(rowHeight * 10, 520);
     const virtuosoOverscan =
         typeof overscan === "number"
             ? overscan
@@ -110,12 +110,200 @@ function VirtualDataTableComponent<T>({
                   reverse: overscan?.reverse ?? defaultOverscanReverse,
               };
     const estimatedItemHeight = rowHeight + (rowDivider ? 1 : 0);
+    const isDev =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1");
+
+    const [perfDebugEnabled] = useState(() => {
+        if (typeof window === "undefined") {
+            return false;
+        }
+        return window.localStorage.getItem("vdt-perf-debug") === "1";
+    });
+    const perfStatsRef = useRef({
+        wheelEvents: 0,
+        wheelInputPx: 0,
+        wheelHandlerMs: 0,
+        wheelRafFlushes: 0,
+        wheelRafMs: 0,
+        rangeChangedCalls: 0,
+        rangeChangedMs: 0,
+        rowContentCalls: 0,
+        rowContentMs: 0,
+        rowContentMaxMs: 0,
+        cellRenderCalls: 0,
+        cellRenderMs: 0,
+        cellRenderMaxMs: 0,
+    });
+
+    // 누적된 성능 통계를 콘솔에 주기적으로 출력한다.
+    const flushPerfStats = useCallback(
+        (reason: string) => {
+            if (!perfDebugEnabled) {
+                return;
+            }
+            const stats = perfStatsRef.current;
+            const hasData =
+                stats.wheelEvents > 0 ||
+                stats.rangeChangedCalls > 0 ||
+                stats.rowContentCalls > 0 ||
+                stats.cellRenderCalls > 0;
+            if (!hasData) {
+                return;
+            }
+
+            const rowAvgMs =
+                stats.rowContentCalls > 0
+                    ? stats.rowContentMs / stats.rowContentCalls
+                    : 0;
+            const cellAvgMs =
+                stats.cellRenderCalls > 0
+                    ? stats.cellRenderMs / stats.cellRenderCalls
+                    : 0;
+
+            console.log("[VDT perf]", {
+                reason,
+                wheel: {
+                    events: stats.wheelEvents,
+                    inputPx: Math.round(stats.wheelInputPx),
+                    handlerMs: Number(stats.wheelHandlerMs.toFixed(2)),
+                    rafFlushes: stats.wheelRafFlushes,
+                    rafMs: Number(stats.wheelRafMs.toFixed(2)),
+                },
+                rangeChanged: {
+                    calls: stats.rangeChangedCalls,
+                    totalMs: Number(stats.rangeChangedMs.toFixed(2)),
+                },
+                rowContent: {
+                    calls: stats.rowContentCalls,
+                    totalMs: Number(stats.rowContentMs.toFixed(2)),
+                    avgMs: Number(rowAvgMs.toFixed(3)),
+                    maxMs: Number(stats.rowContentMaxMs.toFixed(3)),
+                },
+                cellRender: {
+                    calls: stats.cellRenderCalls,
+                    totalMs: Number(stats.cellRenderMs.toFixed(2)),
+                    avgMs: Number(cellAvgMs.toFixed(3)),
+                    maxMs: Number(stats.cellRenderMaxMs.toFixed(3)),
+                },
+            });
+
+            perfStatsRef.current = {
+                wheelEvents: 0,
+                wheelInputPx: 0,
+                wheelHandlerMs: 0,
+                wheelRafFlushes: 0,
+                wheelRafMs: 0,
+                rangeChangedCalls: 0,
+                rangeChangedMs: 0,
+                rowContentCalls: 0,
+                rowContentMs: 0,
+                rowContentMaxMs: 0,
+                cellRenderCalls: 0,
+                cellRenderMs: 0,
+                cellRenderMaxMs: 0,
+            };
+        },
+        [perfDebugEnabled],
+    );
+
+    useEffect(() => {
+        if (!perfDebugEnabled || typeof window === "undefined") {
+            return;
+        }
+
+        console.log("[VDT perf] enabled (localStorage vdt-perf-debug=1)");
+
+        const intervalId = window.setInterval(() => {
+            flushPerfStats("interval");
+        }, 1500);
+
+        return () => {
+            window.clearInterval(intervalId);
+            flushPerfStats("cleanup");
+        };
+    }, [flushPerfStats, perfDebugEnabled]);
 
     // 각 테이블 인스턴스별로 Scroller 컴포넌트 생성 (scrollbars, paddingX를 초기값으로 고정)
     const VirtuosoScroller = useMemo(
         () =>
             forwardRef<HTMLDivElement, any>((props, ref) => {
                 const scrollContainerRef = useRef<HTMLElement | null>(null);
+                const wheelDeltaRef = useRef(0);
+                const wheelRafRef = useRef<number | null>(null);
+
+                // 휠 이벤트를 직접 제어해 브라우저 smooth-scroll 보간 없이 즉시 scrollTop 반영
+                useEffect(() => {
+                    const el = scrollContainerRef.current;
+                    if (!el) return;
+
+                    // 휠 델타를 프레임 단위로 합산 반영해 과도한 scrollTop 갱신을 줄인다.
+                    const handleWheel = (e: WheelEvent) => {
+                        const wheelStart = perfDebugEnabled
+                            ? performance.now()
+                            : 0;
+                        e.preventDefault();
+                        let delta = e.deltaY;
+                        // deltaMode 1 = 라인 단위, 2 = 페이지 단위 변환
+                        if (e.deltaMode === 1) {
+                            delta *= 40;
+                        } else if (e.deltaMode === 2) {
+                            delta *= el.clientHeight;
+                        }
+
+                        if (perfDebugEnabled) {
+                            perfStatsRef.current.wheelEvents += 1;
+                            perfStatsRef.current.wheelInputPx += delta;
+                        }
+
+                        wheelDeltaRef.current += delta;
+                        if (wheelRafRef.current !== null) {
+                            return;
+                        }
+
+                        wheelRafRef.current = requestAnimationFrame(() => {
+                            const rafStart = perfDebugEnabled
+                                ? performance.now()
+                                : 0;
+                            const maxStep = Math.max(
+                                el.clientHeight * 0.4,
+                                160,
+                            );
+                            const batchedDelta = Math.max(
+                                -maxStep,
+                                Math.min(maxStep, wheelDeltaRef.current),
+                            );
+                            wheelDeltaRef.current = 0;
+                            wheelRafRef.current = null;
+                            if (batchedDelta !== 0) {
+                                el.scrollTop += batchedDelta;
+                            }
+                            if (perfDebugEnabled) {
+                                perfStatsRef.current.wheelRafFlushes += 1;
+                                perfStatsRef.current.wheelRafMs +=
+                                    performance.now() - rafStart;
+                            }
+                        });
+
+                        if (perfDebugEnabled) {
+                            perfStatsRef.current.wheelHandlerMs +=
+                                performance.now() - wheelStart;
+                        }
+                    };
+
+                    el.addEventListener("wheel", handleWheel, {
+                        passive: false,
+                    });
+                    return () => {
+                        el.removeEventListener("wheel", handleWheel);
+                        if (wheelRafRef.current !== null) {
+                            cancelAnimationFrame(wheelRafRef.current);
+                            wheelRafRef.current = null;
+                        }
+                        wheelDeltaRef.current = 0;
+                    };
+                }, []);
 
                 return (
                     <OverlayScrollbar
@@ -209,107 +397,9 @@ function VirtualDataTableComponent<T>({
     const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
 
     // 스크롤 컨테이너 참조 (OverlayScrollbar용)
-    const scrollContainerRef = useRef<HTMLElement | null>(null); // 드래그 스크롤 상태 (OverlayScrollbar 사용시에는 비활성화)
     const isDraggingRef = useRef(false);
-    const dragStartRef = useRef({ x: 0, y: 0, scrollTop: 0 });
-    const isMouseDownRef = useRef(false);
-    const initialScrollTopRef = useRef(0);
-    const totalDragDistanceRef = useRef(0);
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
     const mouseDownPositionRef = useRef({ x: 0, y: 0 }); // 마우스 다운 시작 위치
-    const scrollDragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    /**
-     * 마우스 버튼 누름 이벤트 핸들러
-     * OverlayScrollbar 사용시에는 기본 드래그 스크롤을 비활성화
-     */
-    const handleMouseDown = useCallback(
-        (e: React.MouseEvent<HTMLDivElement>) => {
-            // OverlayScrollbar를 사용하므로 기본 드래그 스크롤 비활성화
-            // OverlayScrollbar가 자체적으로 스크롤을 처리함
-            return;
-        },
-        [],
-    );
-
-    /**
-     * 마우스 이동 이벤트 핸들러
-     * 드래그 스크롤 기능의 핵심 로직
-     */
-    const handleMouseMove = useCallback((e: MouseEvent) => {
-        if (!isMouseDownRef.current || !scrollContainerRef.current) return;
-
-        const deltaY = e.clientY - dragStartRef.current.y;
-        const threshold = 5; // 드래그 감지 임계값
-
-        // 임계값을 넘어야 드래그로 인식
-        if (!isDraggingRef.current && Math.abs(deltaY) > threshold) {
-            isDraggingRef.current = true;
-
-            // DOM 스타일 직접 변경 (리렌더링 방지)
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.style.userSelect = "none";
-            }
-        }
-
-        if (isDraggingRef.current) {
-            // 드래그 거리 누적
-            const dragDelta = deltaY * 2; // 감도 조절
-            totalDragDistanceRef.current += -dragDelta; // 드래그 방향과 반대
-
-            // 스크롤 위치 계산 (초기 위치 + 누적 드래그 거리)
-            const scrollContainer = scrollContainerRef.current;
-            const newScrollTop = Math.max(
-                0,
-                initialScrollTopRef.current + totalDragDistanceRef.current,
-            );
-
-            // 스크롤 위치 설정
-            scrollContainer.scrollTop = newScrollTop;
-
-            // 드래그 시작점 업데이트 (연속적인 드래그를 위해)
-            dragStartRef.current.y = e.clientY;
-            e.preventDefault();
-        }
-    }, []);
-
-    /**
-     * 마우스 버튼 해제 이벤트 핸들러
-     * 드래그 스크롤 종료 및 상태 초기화
-     */
-    const handleMouseUp = useCallback(() => {
-        isMouseDownRef.current = false;
-
-        // 드래그가 진행되었다면 최종 스크롤 위치 계산 및 설정
-        if (isDraggingRef.current && scrollContainerRef.current) {
-            const finalScrollTop = Math.max(
-                0,
-                initialScrollTopRef.current + totalDragDistanceRef.current,
-            );
-
-            // 스크롤 위치를 여러 번 강제로 설정하여 확실히 고정
-            const setScrollPosition = () => {
-                if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollTop = finalScrollTop;
-                }
-            };
-
-            // 즉시 설정 및 지연 설정 (스크롤 안정화)
-            setScrollPosition();
-            setTimeout(setScrollPosition, 1);
-            setTimeout(setScrollPosition, 5);
-            setTimeout(setScrollPosition, 10);
-        }
-
-        // 드래그 상태 초기화 (리렌더링 방지를 위해 ref만 사용)
-        isDraggingRef.current = false;
-        totalDragDistanceRef.current = 0;
-
-        // DOM 스타일 초기화
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.style.userSelect = "auto";
-        }
-    }, []);
 
     // 정렬이 변경될 때 모든 TableSortLabel의 hover 상태 초기화
     useEffect(() => {
@@ -345,61 +435,45 @@ function VirtualDataTableComponent<T>({
         [onSort, sortBy, sortDirection],
     );
 
-    // 가상화 스크롤 범위 변경 감지 핸들러 (기존 VirtualDataTable 방식)
-    const handleRangeChange = useCallback(
-        (range: { startIndex: number; endIndex: number }) => {
-            // onLoadMore가 없으면 무한 스크롤 비활성화
+    // 스크롤 끝 근처에서만 추가 로드를 실행해 scroll 핫패스 부담을 줄인다.
+    const handleEndReached = useCallback(
+        (endIndex: number) => {
+            const rangeStart = perfDebugEnabled ? performance.now() : 0;
             if (!onLoadMore) {
+                if (perfDebugEnabled) {
+                    perfStatsRef.current.rangeChangedCalls += 1;
+                    perfStatsRef.current.rangeChangedMs +=
+                        performance.now() - rangeStart;
+                }
                 return;
             }
 
-            // 이미 로딩 중이면 중단 (초기 로딩만 체크, 더 가져오기 로딩은 허용)
             if (loading && data.length === 0) {
+                if (perfDebugEnabled) {
+                    perfStatsRef.current.rangeChangedCalls += 1;
+                    perfStatsRef.current.rangeChangedMs +=
+                        performance.now() - rangeStart;
+                }
                 return;
             }
 
-            // 추가 안전장치: 너무 빠른 연속 호출 방지 (100ms 내 중복 호출 무시)
-            const now = Date.now();
-            const lastTime = (window as any).lastRangeChangeTime || 0;
-            if (now - lastTime < 100) {
-                return;
-            }
-            (window as any).lastRangeChangeTime = now;
-
-            // 더 보수적인 조건: 90% 지점에서 로드 (기존 VirtualDataTable 방식)
-            const bufferSize = Math.max(10, Math.floor(data.length * 0.1)); // 데이터의 10% 또는 최소 10개
-            const shouldLoadMore = range.endIndex >= data.length - bufferSize;
-
-            // 추가 조건: 최소 30개 이상의 데이터에서만 더 가져오기 실행
             const hasMinimumData = data.length >= 30;
+            const nearEnd = endIndex >= data.length - 1;
 
-            if (
-                shouldLoadMore &&
-                hasMinimumData &&
-                onLoadMore &&
-                !isLoadingMoreRef.current
-            ) {
+            if (nearEnd && hasMinimumData && !isLoadingMoreRef.current) {
                 isLoadingMoreRef.current = true;
                 const offset = data.length;
                 const limit = 50;
-
-                // console.log(">>> loadMore 호출 직전", {
-                //     offset,
-                //     limit,
-                //     range,
-                //     dataLength: data.length,
-                //     bufferSize,
-                //     endIndex: range.endIndex,
-                //     threshold: data.length - bufferSize,
-                //     timestamp: new Date().toISOString(),
-                // });
-
                 onLoadMore(offset, limit);
+            }
 
-                // console.log(">>> loadMore 호출 완료");
+            if (perfDebugEnabled) {
+                perfStatsRef.current.rangeChangedCalls += 1;
+                perfStatsRef.current.rangeChangedMs +=
+                    performance.now() - rangeStart;
             }
         },
-        [data.length, loading, onLoadMore],
+        [data.length, loading, onLoadMore, perfDebugEnabled],
     );
 
     // 로딩 상태가 변경되면 isLoadingMoreRef 업데이트 (기존 VirtualDataTable 방식)
@@ -446,20 +520,6 @@ function VirtualDataTableComponent<T>({
 
         prevDataLengthRef.current = currentLength;
     }, [data]);
-
-    /**
-     * 전역 마우스 이벤트 리스너 설정
-     * 드래그가 테이블 영역을 벗어나도 동작하도록 document에 이벤트 리스너 등록
-     */
-    useEffect(() => {
-        document.addEventListener("mousemove", handleMouseMove);
-        document.addEventListener("mouseup", handleMouseUp);
-
-        return () => {
-            document.removeEventListener("mousemove", handleMouseMove);
-            document.removeEventListener("mouseup", handleMouseUp);
-        };
-    }, [handleMouseMove, handleMouseUp]);
 
     /**
      * 테이블 고정 헤더 컨텐츠 정의 (기존 VirtualDataTable 스타일)
@@ -816,35 +876,67 @@ function VirtualDataTableComponent<T>({
      */
     const rowContent = useCallback(
         (index: number, item: T) => {
+            const rowStart = perfDebugEnabled ? performance.now() : 0;
             // console.log("rowContent 렌더링:", { index, item: item ? "있음" : "없음" });
 
             if (!item) {
-                console.log("rowContent - 아이템 없음, 인덱스:", index);
+                if (perfDebugEnabled) {
+                    perfStatsRef.current.rowContentCalls += 1;
+                    const rowDuration = performance.now() - rowStart;
+                    perfStatsRef.current.rowContentMs += rowDuration;
+                    perfStatsRef.current.rowContentMaxMs = Math.max(
+                        perfStatsRef.current.rowContentMaxMs,
+                        rowDuration,
+                    );
+                }
                 return null;
             }
 
-            return (
-                <>
-                    {columns.map((column) => (
-                        <TableCell
-                            key={String(column.id)}
-                            align={column.align || "left"}
-                            style={{
-                                width: column.width,
-                                minWidth: column.width,
-                                ...column.style,
-                                padding: "8px 16px",
-                            }}
-                        >
-                            {column.render
-                                ? column.render(item, index)
-                                : String((item as any)[column.id] || "")}
-                        </TableCell>
-                    ))}
-                </>
-            );
+            const cells = columns.map((column) => {
+                const cellStart = perfDebugEnabled ? performance.now() : 0;
+                const cellValue = column.render
+                    ? column.render(item, index)
+                    : String((item as any)[column.id] || "");
+
+                if (perfDebugEnabled) {
+                    const cellDuration = performance.now() - cellStart;
+                    perfStatsRef.current.cellRenderCalls += 1;
+                    perfStatsRef.current.cellRenderMs += cellDuration;
+                    perfStatsRef.current.cellRenderMaxMs = Math.max(
+                        perfStatsRef.current.cellRenderMaxMs,
+                        cellDuration,
+                    );
+                }
+
+                return (
+                    <TableCell
+                        key={String(column.id)}
+                        align={column.align || "left"}
+                        style={{
+                            width: column.width,
+                            minWidth: column.width,
+                            ...column.style,
+                            padding: "8px 16px",
+                        }}
+                    >
+                        {cellValue}
+                    </TableCell>
+                );
+            });
+
+            if (perfDebugEnabled) {
+                perfStatsRef.current.rowContentCalls += 1;
+                const rowDuration = performance.now() - rowStart;
+                perfStatsRef.current.rowContentMs += rowDuration;
+                perfStatsRef.current.rowContentMaxMs = Math.max(
+                    perfStatsRef.current.rowContentMaxMs,
+                    rowDuration,
+                );
+            }
+
+            return <>{cells}</>;
         },
-        [columns],
+        [columns, perfDebugEnabled],
     );
 
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
@@ -932,23 +1024,6 @@ function VirtualDataTableComponent<T>({
                                 y: e.clientY,
                             };
                         }}
-                        onMouseMove={(e: any) => {
-                            // 마우스가 5px 이상 움직였을 때만 드래그로 간주
-                            const deltaX = Math.abs(
-                                e.clientX - mouseDownPositionRef.current.x,
-                            );
-                            const deltaY = Math.abs(
-                                e.clientY - mouseDownPositionRef.current.y,
-                            );
-                            const dragThreshold = 5;
-
-                            if (
-                                deltaX > dragThreshold ||
-                                deltaY > dragThreshold
-                            ) {
-                                isScrollDraggingRef.current = true;
-                            }
-                        }}
                         onClick={() => {
                             if (
                                 !isScrollDraggingRef.current &&
@@ -993,136 +1068,33 @@ function VirtualDataTableComponent<T>({
                                                   const opacity =
                                                       rowHoverOpacity ?? 0.06;
 
-                                                  const hex = color.replace(
-                                                      "#",
-                                                      "",
-                                                  );
-                                                  let r =
-                                                      parseInt(
-                                                          hex.substring(0, 2),
-                                                          16,
-                                                      ) / 255;
-                                                  let g =
-                                                      parseInt(
-                                                          hex.substring(2, 4),
-                                                          16,
-                                                      ) / 255;
-                                                  let b =
-                                                      parseInt(
-                                                          hex.substring(4, 6),
-                                                          16,
-                                                      ) / 255;
-
-                                                  if (isDark) {
-                                                      const max = Math.max(
-                                                          r,
-                                                          g,
-                                                          b,
-                                                      );
-                                                      const min = Math.min(
-                                                          r,
-                                                          g,
-                                                          b,
-                                                      );
-                                                      let h = 0;
-                                                      let s = 0;
-                                                      let l = (max + min) / 2;
-
-                                                      if (max !== min) {
-                                                          const d = max - min;
-                                                          s =
-                                                              l > 0.5
-                                                                  ? d /
-                                                                    (2 -
-                                                                        max -
-                                                                        min)
-                                                                  : d /
-                                                                    (max + min);
-
-                                                          switch (max) {
-                                                              case r:
-                                                                  h =
-                                                                      ((g - b) /
-                                                                          d +
-                                                                          (g < b
-                                                                              ? 6
-                                                                              : 0)) /
-                                                                      6;
-                                                                  break;
-                                                              case g:
-                                                                  h =
-                                                                      ((b - r) /
-                                                                          d +
-                                                                          2) /
-                                                                      6;
-                                                                  break;
-                                                              case b:
-                                                                  h =
-                                                                      ((r - g) /
-                                                                          d +
-                                                                          4) /
-                                                                      6;
-                                                                  break;
-                                                          }
-                                                      }
-
-                                                      l = 1 - l;
-
-                                                      const hue2rgb = (
-                                                          p: number,
-                                                          q: number,
-                                                          t: number,
-                                                      ) => {
-                                                          if (t < 0) t += 1;
-                                                          if (t > 1) t -= 1;
-                                                          if (t < 1 / 6) {
-                                                              return (
-                                                                  p +
-                                                                  (q - p) *
-                                                                      6 *
-                                                                      t
-                                                              );
-                                                          }
-                                                          if (t < 1 / 2) {
-                                                              return q;
-                                                          }
-                                                          if (t < 2 / 3) {
-                                                              return (
-                                                                  p +
-                                                                  (q - p) *
-                                                                      (2 / 3 -
-                                                                          t) *
-                                                                      6
-                                                              );
-                                                          }
-                                                          return p;
-                                                      };
-
-                                                      if (s === 0) {
-                                                          r = g = b = l;
-                                                      } else {
-                                                          const q =
-                                                              l < 0.5
-                                                                  ? l * (1 + s)
-                                                                  : l +
-                                                                    s -
-                                                                    l * s;
-                                                          const p = 2 * l - q;
-                                                          r = hue2rgb(
-                                                              p,
-                                                              q,
-                                                              h + 1 / 3,
-                                                          );
-                                                          g = hue2rgb(p, q, h);
-                                                          b = hue2rgb(
-                                                              p,
-                                                              q,
-                                                              h - 1 / 3,
-                                                          );
-                                                      }
+                                                  if (!rowHoverColor) {
+                                                      return isDark
+                                                          ? `rgba(255, 255, 255, ${opacity})`
+                                                          : `rgba(0, 0, 0, ${opacity})`;
                                                   }
 
-                                                  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+                                                  const hex = color
+                                                      .replace("#", "")
+                                                      .trim();
+                                                  if (hex.length !== 6) {
+                                                      return color;
+                                                  }
+
+                                                  const r = parseInt(
+                                                      hex.substring(0, 2),
+                                                      16,
+                                                  );
+                                                  const g = parseInt(
+                                                      hex.substring(2, 4),
+                                                      16,
+                                                  );
+                                                  const b = parseInt(
+                                                      hex.substring(4, 6),
+                                                      16,
+                                                  );
+
+                                                  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
                                               },
                                           }
                                         : undefined,
@@ -1144,7 +1116,6 @@ function VirtualDataTableComponent<T>({
             selectedRowId,
             selectedRowSx,
             rowHeight,
-            handleMouseDown,
             stripedRowColor,
             rowDivider,
             columnHeight,
@@ -1153,6 +1124,8 @@ function VirtualDataTableComponent<T>({
             VirtuosoScroller,
         ],
     );
+
+    const resolvedVirtuosoComponents = VirtuosoTableComponents;
 
     // 공통 테이블 내용
     const tableContent = (
@@ -1176,10 +1149,10 @@ function VirtualDataTableComponent<T>({
                 data={data}
                 totalCount={onLoadMore ? data.length + 1 : data.length}
                 defaultItemHeight={estimatedItemHeight}
+                fixedItemHeight={estimatedItemHeight}
                 fixedHeaderContent={fixedHeaderContent}
                 itemContent={rowContent}
-                rangeChanged={handleRangeChange}
-                components={VirtuosoTableComponents}
+                endReached={handleEndReached}
                 style={{ height: "100%" }}
                 increaseViewportBy={{
                     top: viewportBufferTop,
@@ -1187,6 +1160,7 @@ function VirtualDataTableComponent<T>({
                 }}
                 overscan={virtuosoOverscan}
                 followOutput={false}
+                components={resolvedVirtuosoComponents}
             />
 
             {/* 빈 데이터 표시 */}
