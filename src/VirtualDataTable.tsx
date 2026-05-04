@@ -58,6 +58,7 @@ const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
     margin: 0,
     radius: 0,
 };
+const ROW_CLICK_DRAG_THRESHOLD_PX = 5;
 
 /**
  * 데이터 기반 무한 스크롤 및 가상화를 지원하는 테이블 컴포넌트
@@ -399,6 +400,21 @@ function VirtualDataTableComponent<T>({
     // 스크롤 컨테이너 참조 (OverlayScrollbar용)
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
     const mouseDownPositionRef = useRef({ x: 0, y: 0 }); // 마우스 다운 시작 위치
+
+    useEffect(() => {
+        const handleDocumentMouseMove = (event: MouseEvent) => {
+            const dx = event.clientX - mouseDownPositionRef.current.x;
+            const dy = event.clientY - mouseDownPositionRef.current.y;
+            if (Math.sqrt(dx * dx + dy * dy) > ROW_CLICK_DRAG_THRESHOLD_PX) {
+                isScrollDraggingRef.current = true;
+            }
+        };
+
+        document.addEventListener("mousemove", handleDocumentMouseMove);
+        return () => {
+            document.removeEventListener("mousemove", handleDocumentMouseMove);
+        };
+    }, []);
 
     // 정렬이 변경될 때 모든 TableSortLabel의 hover 상태 초기화
     useEffect(() => {
@@ -1029,13 +1045,17 @@ function VirtualDataTableComponent<T>({
                                 e.clientX - mouseDownPositionRef.current.x;
                             const dy =
                                 e.clientY - mouseDownPositionRef.current.y;
-                            const wasDrag = Math.sqrt(dx * dx + dy * dy) > 5;
-                            if (
-                                !wasDrag &&
-                                !isScrollDraggingRef.current &&
-                                item &&
-                                onRowClick
-                            ) {
+                            const wasDrag =
+                                Math.sqrt(dx * dx + dy * dy) >
+                                    ROW_CLICK_DRAG_THRESHOLD_PX ||
+                                isScrollDraggingRef.current;
+                            if (wasDrag) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                isScrollDraggingRef.current = false;
+                                return;
+                            }
+                            if (item && onRowClick) {
                                 onRowClick(item, rowIndex);
                             }
                             isScrollDraggingRef.current = false;
