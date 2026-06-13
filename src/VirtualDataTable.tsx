@@ -40,6 +40,7 @@ import {
     TableCell,
     TableContainer,
     TableHead,
+    TableFooter as MuiTableFooter,
     TableRow as MuiTableRow,
     TableSortLabel,
     Paper,
@@ -90,6 +91,9 @@ function VirtualDataTableComponent<T>({
     scrollbars,
     emptyMessage = "NO DATA",
     LoadingComponent,
+    showFooter,
+    footerHeight,
+    footerSx,
 }: VirtualDataTableProps<T>) {
     const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
     const defaultViewportBufferBottom = Math.max(rowHeight * 12, 480);
@@ -954,6 +958,41 @@ function VirtualDataTableComponent<T>({
         [columns, perfDebugEnabled],
     );
 
+    // 컬럼에 footer 렌더러가 하나라도 있거나 showFooter 가 명시되면 하단 합계 행을 표시한다.
+    const hasFooter =
+        showFooter ?? columns.some((col) => typeof col.footer === "function");
+
+    /**
+     * 테이블 하단 고정 합계 행(tfoot) 컨텐츠 정의
+     * 각 컬럼의 footer(data) 결과를 셀로 렌더링한다. (footer 없는 컬럼은 빈 셀)
+     * tableLayout: fixed 라 헤더/바디와 동일한 컬럼 너비로 자동 정렬된다.
+     */
+    const fixedFooterContent = useCallback(() => {
+        if (!hasFooter) {
+            return null;
+        }
+
+        return (
+            <MuiTableRow>
+                {columns.map((col) => (
+                    <TableCell
+                        key={String(col.id)}
+                        align={col.align || "left"}
+                        style={{
+                            width: col.width,
+                            minWidth: col.width,
+                            ...col.style,
+                            fontWeight: "bold",
+                            padding: "16px",
+                        }}
+                    >
+                        {col.footer ? col.footer(data) : null}
+                    </TableCell>
+                ))}
+            </MuiTableRow>
+        );
+    }, [hasFooter, columns, data]);
+
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
     const VirtuosoTableComponents: TableComponents<T> = useMemo(
         () => ({
@@ -1134,6 +1173,41 @@ function VirtualDataTableComponent<T>({
             TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
                 <MuiTableBody {...props} ref={ref} />
             )),
+            // 테이블 하단 합계 행(tfoot) — 바닥에 고정
+            TableFoot: forwardRef<HTMLTableSectionElement, any>(
+                (props, ref) => (
+                    <MuiTableFooter
+                        {...props}
+                        ref={ref}
+                        sx={[
+                            {
+                                position: "sticky",
+                                bottom: 0,
+                                zIndex: 2,
+                                backgroundColor: (theme) =>
+                                    theme.palette.mode === "dark"
+                                        ? "#1e1e1e"
+                                        : "#ffffff",
+                                "& tr": {
+                                    height: footerHeight ?? rowHeight,
+                                },
+                                "& td": {
+                                    padding: "16px",
+                                    color: "inherit",
+                                    fontSize: "0.875rem",
+                                    borderTop: "2px solid rgba(224, 224, 224, 1)",
+                                    borderBottom: "none",
+                                },
+                            },
+                            ...(Array.isArray(footerSx)
+                                ? footerSx
+                                : footerSx
+                                  ? [footerSx]
+                                  : []),
+                        ]}
+                    />
+                ),
+            ),
         }),
         [
             onRowClick,
@@ -1147,6 +1221,8 @@ function VirtualDataTableComponent<T>({
             rowHoverColor,
             rowHoverOpacity,
             VirtuosoScroller,
+            footerHeight,
+            footerSx,
         ],
     );
 
@@ -1176,6 +1252,7 @@ function VirtualDataTableComponent<T>({
                 defaultItemHeight={estimatedItemHeight}
                 fixedItemHeight={estimatedItemHeight}
                 fixedHeaderContent={fixedHeaderContent}
+                fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
                 itemContent={rowContent}
                 endReached={handleEndReached}
                 style={{ height: "100%" }}

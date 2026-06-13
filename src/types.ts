@@ -40,6 +40,7 @@ export interface DataColumn<T> {
     style?: React.CSSProperties; // 추가 스타일
     render?: (item: T, index: number) => React.ReactNode; // 커스텀 렌더링 함수
     group?: string; // 그룹 헤더명
+    footer?: (data: T[]) => React.ReactNode; // 하단 합계(tfoot) 셀 렌더링 함수 (전체 표시 데이터 전달)
 }
 
 /** 정렬 방향 타입 */
@@ -103,4 +104,7 @@ export interface VirtualDataTableProps<T> {
         visible?: boolean;
         onComplete?: () => void;
     }>; // 외부 Loading 컴포넌트
+    showFooter?: boolean; // 하단 합계 행(tfoot) 표시 여부 (기본값: 컬럼에 footer 가 하나라도 있으면 자동 표시)
+    footerHeight?: number; // 하단 합계 행 높이 (px, 기본값: rowHeight)
+    footerSx?: SxProps<Theme>; // 하단 합계 행(tfoot) 스타일
 }
