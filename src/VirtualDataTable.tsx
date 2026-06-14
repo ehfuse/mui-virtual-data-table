@@ -45,6 +45,8 @@ import {
     TableSortLabel,
     Paper,
     Typography,
+    type SxProps,
+    type Theme,
 } from "@mui/material";
 import { TableVirtuoso } from "react-virtuoso";
 import type { TableComponents } from "react-virtuoso";
@@ -116,6 +118,27 @@ function VirtualDataTableComponent<T>({
                   reverse: overscan?.reverse ?? defaultOverscanReverse,
               };
     const estimatedItemHeight = rowHeight + (rowDivider ? 1 : 0);
+
+    // 선택 행 하이라이트는 selectedRowSx 가 객체(또는 미지정)면 CSS 셀렉터로 처리한다.
+    // 컨테이너 sx 에 `tr[data-row-id="..."]` 규칙을 넣으면 selectedRowId 변경 시 components/행을
+    // 재렌더하지 않고(컨테이너 1개만 갱신) CSS 로만 강조돼 row 클릭 반응이 즉각적이다.
+    // 함수형 selectedRowSx(행마다 동적)는 CSS 로 표현 불가하므로 기존 per-row 경로를 유지한다.
+    const useCssRowHighlight = !selectedRowSx || typeof selectedRowSx !== "function";
+    const selectedRowCssSx = useMemo<Record<string, unknown> | null>(() => {
+        if (
+            !useCssRowHighlight ||
+            selectedRowId === null ||
+            selectedRowId === undefined ||
+            !selectedRowSx
+        ) {
+            return null;
+        }
+        const escaped = String(selectedRowId).replace(/["\\]/g, "\\$&");
+        return {
+            [`& tbody tr[data-row-id="${escaped}"]`]: selectedRowSx,
+        };
+    }, [useCssRowHighlight, selectedRowId, selectedRowSx]);
+
     const isDev =
         typeof window !== "undefined" &&
         (window.location.hostname === "localhost" ||
@@ -1076,7 +1099,10 @@ function VirtualDataTableComponent<T>({
                     item && getRowIdRef.current
                         ? getRowIdRef.current(item, rowIndex)
                         : rowIndex;
+                // CSS 하이라이트 모드에서는 행 자체에서 선택을 계산하지 않는다(컨테이너 CSS 가 처리).
+                // → selectedRowId 변경이 행 재렌더로 이어지지 않는다.
                 const isSelected =
+                    !useCssRowHighlight &&
                     selectedRowId !== null &&
                     selectedRowId !== undefined &&
                     rowId === selectedRowId;
@@ -1098,6 +1124,7 @@ function VirtualDataTableComponent<T>({
                 return (
                     <MuiTableRow
                         {...rest}
+                        data-row-id={rowId !== null && rowId !== undefined ? String(rowId) : undefined}
                         className={sanitizedClassName || undefined}
                         selected={isSelected}
                         onMouseDown={(e: any) => {
@@ -1247,7 +1274,9 @@ function VirtualDataTableComponent<T>({
         [
             // onRowClick/getRowId 는 ref 로 처리하므로 deps 에서 제외(인라인 콜백이어도 행 리마운트 안 됨).
             hasRowClick,
-            selectedRowId,
+            // CSS 하이라이트 모드에서는 selectedRowId 가 components 를 재생성하지 않게 한다(행 재렌더 방지).
+            // 함수형 selectedRowSx(per-row) 일 때만 selectedRowId 변경으로 components 를 갱신한다.
+            useCssRowHighlight ? null : selectedRowId,
             selectedRowSx,
             rowHeight,
             stripedRowColor,
@@ -1267,17 +1296,21 @@ function VirtualDataTableComponent<T>({
     // 공통 테이블 내용
     const tableContent = (
         <Box
-            sx={{
-                position: "relative",
-                height: "100%",
-                width: "100%",
-                "& .MuiTableHead-root": {
-                    backgroundColor: (theme) =>
-                        theme.palette.mode === "dark"
-                            ? "#1e1e1e !important"
-                            : "#ffffff !important",
-                },
-            }}
+            sx={
+                {
+                    position: "relative",
+                    height: "100%",
+                    width: "100%",
+                    "& .MuiTableHead-root": {
+                        backgroundColor: (theme: Theme) =>
+                            theme.palette.mode === "dark"
+                                ? "#1e1e1e !important"
+                                : "#ffffff !important",
+                    },
+                    // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
+                    ...(selectedRowCssSx ?? {}),
+                } as SxProps<Theme>
+            }
         >
             {/* 테이블 */}
             <TableVirtuoso
