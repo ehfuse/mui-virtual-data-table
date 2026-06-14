@@ -972,25 +972,39 @@ function VirtualDataTableComponent<T>({
             return null;
         }
 
-        return (
-            <MuiTableRow>
-                {columns.map((col) => (
-                    <TableCell
-                        key={String(col.id)}
-                        align={col.align || "left"}
-                        style={{
-                            width: col.width,
-                            minWidth: col.width,
-                            ...col.style,
-                            fontWeight: "bold",
-                            padding: "16px",
-                        }}
-                    >
-                        {col.footer ? col.footer(data) : null}
-                    </TableCell>
-                ))}
-            </MuiTableRow>
-        );
+        // footerColSpan 으로 셀을 병합한다. 앞 컬럼이 colSpan 으로 덮은 컬럼은 셀을 생략한다.
+        const cells: React.ReactNode[] = [];
+        for (let i = 0; i < columns.length; i += 1) {
+            const col = columns[i];
+            const colSpan =
+                col.footerColSpan && col.footerColSpan > 1
+                    ? Math.min(col.footerColSpan, columns.length - i)
+                    : 1;
+
+            cells.push(
+                <TableCell
+                    key={String(col.id)}
+                    align={col.align || "left"}
+                    colSpan={colSpan > 1 ? colSpan : undefined}
+                    style={{
+                        // 병합 시 너비 고정을 풀어 colSpan 이 실제로 늘어나게 한다.
+                        ...(colSpan > 1
+                            ? {}
+                            : { width: col.width, minWidth: col.width }),
+                        ...col.style,
+                        fontWeight: "bold",
+                        padding: "16px",
+                    }}
+                >
+                    {col.footer ? col.footer(data) : null}
+                </TableCell>,
+            );
+
+            // colSpan 으로 덮인 뒤 컬럼은 건너뛴다.
+            i += colSpan - 1;
+        }
+
+        return <MuiTableRow>{cells}</MuiTableRow>;
     }, [hasFooter, columns, data]);
 
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
@@ -1006,6 +1020,9 @@ function VirtualDataTableComponent<T>({
                         borderCollapse: "separate",
                         tableLayout: "fixed",
                         marginRight: "16px",
+                        // 하단 합계 행이 있으면 데이터가 적어도 테이블이 컨테이너를 채우게 한다.
+                        // (실제 바닥 정렬은 tbody 가 늘어나며 처리 — 행 높이는 그대로 유지)
+                        ...(hasFooter ? { height: "100%" } : {}),
                     }}
                 />
             ),
@@ -1169,9 +1186,14 @@ function VirtualDataTableComponent<T>({
                     />
                 );
             },
-            // 테이블 바디
+            // 테이블 바디 — 하단 합계 행이 있으면 row-group 을 늘려 빈 공간이 마지막 행 '아래'로 가게 한다.
+            // (개별 행 높이는 그대로 유지되고, tfoot 은 그 아래 바닥에 붙는다)
             TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
-                <MuiTableBody {...props} ref={ref} />
+                <MuiTableBody
+                    {...props}
+                    ref={ref}
+                    sx={hasFooter ? { height: "100%" } : undefined}
+                />
             )),
             // 테이블 하단 합계 행(tfoot) — 바닥에 고정
             TableFoot: forwardRef<HTMLTableSectionElement, any>(
@@ -1195,7 +1217,7 @@ function VirtualDataTableComponent<T>({
                                     padding: "16px",
                                     color: "inherit",
                                     fontSize: "0.875rem",
-                                    borderTop: "2px solid rgba(224, 224, 224, 1)",
+                                    borderTop: "1px solid #000000",
                                     borderBottom: "none",
                                 },
                             },
@@ -1223,6 +1245,7 @@ function VirtualDataTableComponent<T>({
             VirtuosoScroller,
             footerHeight,
             footerSx,
+            hasFooter,
         ],
     );
 

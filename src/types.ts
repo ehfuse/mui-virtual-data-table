@@ -41,6 +41,7 @@ export interface DataColumn<T> {
     render?: (item: T, index: number) => React.ReactNode; // 커스텀 렌더링 함수
     group?: string; // 그룹 헤더명
     footer?: (data: T[]) => React.ReactNode; // 하단 합계(tfoot) 셀 렌더링 함수 (전체 표시 데이터 전달)
+    footerColSpan?: number; // 하단 합계 셀이 차지할 컬럼 수 (이만큼 뒤 컬럼의 footer 셀은 생략됨)
 }
 
 /** 정렬 방향 타입 */
