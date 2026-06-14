@@ -49,6 +49,7 @@ import {
 import { TableVirtuoso } from "react-virtuoso";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
+import { CssSpinner } from "./CssSpinner";
 
 import OverlayScrollbar from "@ehfuse/overlay-scrollbar";
 import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
@@ -400,6 +401,16 @@ function VirtualDataTableComponent<T>({
     // 무한 스크롤 로딩 상태 (기존 VirtualDataTable 방식)
     const isLoadingMoreRef = useRef(false);
     const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
+
+    // 소비처가 인라인으로 넘기는 콜백(onRowClick/getRowId)은 매 렌더마다 identity 가 바뀐다.
+    // 이를 ref 로 잡아 두면 VirtuosoTableComponents(memo)를 재생성하지 않아도 최신 콜백을 쓸 수 있어,
+    // 검색/필터로 부모가 리렌더돼도 행(및 이미지)이 리마운트되지 않는다(사진 깜빡임 방지).
+    const onRowClickRef = useRef(onRowClick);
+    onRowClickRef.current = onRowClick;
+    const getRowIdRef = useRef(getRowId);
+    getRowIdRef.current = getRowId;
+    // truthiness 가 바뀌면(클릭 가능 여부) hover/cursor 스타일이 달라지므로 deps 에는 boolean 만 넣는다.
+    const hasRowClick = !!onRowClick;
 
     // 스크롤 컨테이너 참조 (OverlayScrollbar용)
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용
@@ -1062,7 +1073,9 @@ function VirtualDataTableComponent<T>({
                 const rowIndex = rest["data-index"] ?? 0;
                 const isOddRow = rowIndex % 2 === 1;
                 const rowId =
-                    item && getRowId ? getRowId(item, rowIndex) : rowIndex;
+                    item && getRowIdRef.current
+                        ? getRowIdRef.current(item, rowIndex)
+                        : rowIndex;
                 const isSelected =
                     selectedRowId !== null &&
                     selectedRowId !== undefined &&
@@ -1111,8 +1124,8 @@ function VirtualDataTableComponent<T>({
                                 isScrollDraggingRef.current = false;
                                 return;
                             }
-                            if (item && onRowClick) {
-                                onRowClick(item, rowIndex);
+                            if (item && onRowClickRef.current) {
+                                onRowClickRef.current(item, rowIndex);
                             }
                             isScrollDraggingRef.current = false;
                         }}
@@ -1135,7 +1148,7 @@ function VirtualDataTableComponent<T>({
                                     borderBottom: "none",
                                 },
                                 "&:hover":
-                                    onRowClick && !isSelected
+                                    hasRowClick && !isSelected
                                         ? {
                                               backgroundColor: (theme) => {
                                                   const isDark =
@@ -1179,7 +1192,7 @@ function VirtualDataTableComponent<T>({
                                               },
                                           }
                                         : undefined,
-                                cursor: onRowClick ? "pointer" : undefined,
+                                cursor: hasRowClick ? "pointer" : undefined,
                             },
                             resolvedSelectedRowSx,
                         ]}
@@ -1232,8 +1245,8 @@ function VirtualDataTableComponent<T>({
             ),
         }),
         [
-            onRowClick,
-            getRowId,
+            // onRowClick/getRowId 는 ref 로 처리하므로 deps 에서 제외(인라인 콜백이어도 행 리마운트 안 됨).
+            hasRowClick,
             selectedRowId,
             selectedRowSx,
             rowHeight,
@@ -1346,12 +1359,15 @@ function VirtualDataTableComponent<T>({
                             visible={loading}
                             onComplete={handleLoadingComplete}
                             size={40}
+                            indicator={<CssSpinner />}
                             sx={{
                                 top: `${
                                     columns.some((col) => col.group)
                                         ? columnHeight * 2
                                         : columnHeight
                                 }px`,
+                                // 푸터(합계 행)가 있으면 그 높이만큼 아래를 잘라, 헤더~푸터 사이 내용 영역 중앙에 스피너를 둔다.
+                                bottom: `${hasFooter ? footerHeight ?? rowHeight : 0}px`,
                             }}
                             background={{
                                 show: data.length === 0, // 최초 로딩에만 배경 표시
