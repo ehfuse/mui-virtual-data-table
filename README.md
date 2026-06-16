@@ -104,7 +104,7 @@ function App() {
     // Optional - Styling
     striped={boolean | string}              // Zebra striping (true: default gray (#f5f5f5), string: custom color, default: false)
     rowDivider={boolean}                    // Show row borders (default: true)
-    rowHeight={number}                      // Row height in px (default: 50)
+    rowHeight={number}                      // Fixed row height in px (default: 50) — rows keep this height even when showFooter fills a taller container
     columnHeight={number}                   // Header height in px (default: 56, auto 2x for grouped headers)
     showPaper={boolean}                     // Wrap in Paper component (default: true)
     paddingX={string | number}              // Horizontal padding (default: "1rem")

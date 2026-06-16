@@ -1228,13 +1228,31 @@ function VirtualDataTableComponent<T>({
             },
             // 테이블 바디 — 하단 합계 행이 있으면 row-group 을 늘려 빈 공간이 마지막 행 '아래'로 가게 한다.
             // (개별 행 높이는 그대로 유지되고, tfoot 은 그 아래 바닥에 붙는다)
-            TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => (
-                <MuiTableBody
-                    {...props}
-                    ref={ref}
-                    sx={hasFooter ? { height: "100%" } : undefined}
-                />
-            )),
+            TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => {
+                const { children, ...rest } =
+                    props as React.HTMLAttributes<HTMLTableSectionElement>;
+                return (
+                    <MuiTableBody
+                        {...rest}
+                        ref={ref}
+                        sx={hasFooter ? { height: "100%" } : undefined}
+                    >
+                        {children}
+                        {/* fill 모드(hasFooter)에서 table/tbody 의 height:100% 때문에 남는 높이가
+                            데이터 <tr> 에 분배되어 행이 rowHeight 보다 커지는 문제를 막는 spacer.
+                            유연한 빈 행이 남는 공간을 흡수 → 데이터 행은 rowHeight 로 고정되고,
+                            sticky footer 는 그 아래 바닥에 붙는다. 스크롤이 생기면 0 으로 접힌다. */}
+                        {hasFooter && (
+                            <tr aria-hidden style={{ height: "100%" }}>
+                                <td
+                                    colSpan={columns.length}
+                                    style={{ padding: 0, border: 0 }}
+                                />
+                            </tr>
+                        )}
+                    </MuiTableBody>
+                );
+            }),
             // 테이블 하단 합계 행(tfoot) — 바닥에 고정
             TableFoot: forwardRef<HTMLTableSectionElement, any>(
                 (props, ref) => (
@@ -1288,6 +1306,8 @@ function VirtualDataTableComponent<T>({
             footerHeight,
             footerSx,
             hasFooter,
+            // spacer 행의 colSpan 계산에 사용 (컬럼 구조 변경 시 components 재생성)
+            columns,
         ],
     );
 
