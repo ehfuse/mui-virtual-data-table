@@ -423,6 +423,10 @@ function VirtualDataTableComponent<T>({
 
     // 무한 스크롤 로딩 상태 (기존 VirtualDataTable 방식)
     const isLoadingMoreRef = useRef(false);
+    // 직전에 loadMore 를 요청한 시점의 데이터 길이. 요청 후 길이가 늘지 않았다면
+    // (= 서버에 더 이상 데이터 없음) 같은 길이로는 다시 요청하지 않아, 바닥에서
+    // endReached ↔ onLoadMore 가 무한 반복되는 것을 막는다.
+    const lastLoadMoreLengthRef = useRef<number>(-1);
     const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
 
     // 소비처가 인라인으로 넘기는 콜백(onRowClick/getRowId)은 매 렌더마다 identity 가 바뀐다.
@@ -513,8 +517,18 @@ function VirtualDataTableComponent<T>({
             const hasMinimumData = data.length >= 30;
             const nearEnd = endIndex >= data.length - 1;
 
-            if (nearEnd && hasMinimumData && !isLoadingMoreRef.current) {
+            // 직전 요청 이후 길이가 그대로면(서버에 더 이상 데이터 없음) 재요청하지 않는다.
+            const alreadyRequestedAtThisLength =
+                lastLoadMoreLengthRef.current === data.length;
+
+            if (
+                nearEnd &&
+                hasMinimumData &&
+                !isLoadingMoreRef.current &&
+                !alreadyRequestedAtThisLength
+            ) {
                 isLoadingMoreRef.current = true;
+                lastLoadMoreLengthRef.current = data.length;
                 const offset = data.length;
                 const limit = 50;
                 onLoadMore(offset, limit);
@@ -543,27 +557,41 @@ function VirtualDataTableComponent<T>({
         }
     }, [data.length]);
 
-    // 이전 데이터 길이를 추적
+    // 이전 데이터 길이 / 첫 행 식별자를 추적
     const prevDataLengthRef = useRef(data.length);
+    const prevFirstRowKeyRef = useRef<unknown>(undefined);
 
-    // 데이터가 변경되면(정렬, 필터 등) 스크롤을 맨 위로 이동
-    // 단, 무한 스크롤로 데이터가 추가될 때(길이만 증가)는 스크롤 위치 유지
+    // 데이터가 '진짜로 교체'된 경우(정렬/필터/재조회)에만 스크롤을 맨 위로 이동한다.
+    // 단순히 같은 목록의 항목이 in-place 로 바뀌었을 뿐(체크박스 토글, 무한 스크롤
+    // 빈 결과, 부모 리렌더로 인한 새 배열 참조 등)인데도 맨 위로 튀던 문제를 막는다.
+    // → 첫 행 식별자(getRowId)와 길이로 '교체' 여부를 판별한다.
     useEffect(() => {
         const prevLength = prevDataLengthRef.current;
         const currentLength = data.length;
 
+        // 첫 행 키: getRowId 가 있으면 값 기반(참조가 매번 바뀌어도 안정), 없으면 객체 참조.
+        const firstRowKey =
+            currentLength > 0
+                ? getRowIdRef.current
+                    ? getRowIdRef.current(data[0], 0)
+                    : (data[0] as unknown)
+                : undefined;
+        const prevFirstRowKey = prevFirstRowKeyRef.current;
+
         // 데이터 길이가 증가한 경우 (무한 스크롤) - 스크롤 위치 유지
         if (currentLength > prevLength && prevLength > 0) {
             prevDataLengthRef.current = currentLength;
+            prevFirstRowKeyRef.current = firstRowKey;
             return;
         }
 
-        // 데이터가 교체된 경우 (정렬, 필터 등) - 스크롤을 맨 위로
-        if (
-            virtuosoRef.current &&
-            currentLength > 0 &&
-            currentLength <= prevLength
-        ) {
+        // '교체'로 판단: 길이가 줄었거나, 첫 행 식별자가 바뀐 경우에만 맨 위로.
+        // (같은 길이 + 같은 첫 행 = in-place 업데이트 → 스크롤 유지)
+        const dataReplaced =
+            currentLength < prevLength ||
+            (prevLength > 0 && firstRowKey !== prevFirstRowKey);
+
+        if (virtuosoRef.current && currentLength > 0 && dataReplaced) {
             virtuosoRef.current.scrollToIndex({
                 index: 0,
                 align: "start",
@@ -572,6 +600,7 @@ function VirtualDataTableComponent<T>({
         }
 
         prevDataLengthRef.current = currentLength;
+        prevFirstRowKeyRef.current = firstRowKey;
     }, [data]);
 
     /**
@@ -1159,13 +1188,24 @@ function VirtualDataTableComponent<T>({
                         sx={[
                             {
                                 userSelect: "none",
-                                height: rowHeight,
+                                // 행 높이를 estimatedItemHeight(=rowHeight + divider) 로 정확히
+                                // 고정한다. react-virtuoso 는 fixedItemHeight 를 줘도
+                                // ResizeObserver 로 실제 행 높이를 재측정해 반영하는데, 셀
+                                // 폰트/라인의 서브픽셀 때문에 측정값이 정수에서 어긋나면
+                                // 하단 filler row 높이(offsetBottom)가 스크롤마다 소수점으로
+                                // 흔들리고, 그 위에 sticky 로 붙은 <tfoot> 합계행이 1px 떨린다.
+                                // height/maxHeight 를 정수로 박고 overflow:hidden 으로 막아
+                                // 측정값이 항상 estimatedItemHeight 가 되게 한다.
+                                height: estimatedItemHeight,
+                                maxHeight: estimatedItemHeight,
+                                boxSizing: "border-box",
                                 backgroundColor:
                                     isOddRow && stripedRowColor
                                         ? stripedRowColor
                                         : "transparent",
                                 "& td": {
                                     padding: "8px 16px",
+                                    boxSizing: "border-box",
                                     borderBottom: rowDivider
                                         ? "1px solid rgba(224, 224, 224, 1)"
                                         : "none",
@@ -1261,22 +1301,35 @@ function VirtualDataTableComponent<T>({
                         ref={ref}
                         sx={[
                             {
-                                position: "sticky",
-                                bottom: 0,
-                                zIndex: 2,
-                                backgroundColor: (theme) =>
-                                    theme.palette.mode === "dark"
-                                        ? "#1e1e1e"
-                                        : "#ffffff",
+                                // 떨림의 근본 원인(데이터 행 측정 높이의 서브픽셀)은 TableRow
+                                // 에서 height/maxHeight 정수 고정으로 잡는다. 여기서는 합계행
+                                // 셀 스타일만 둔다(virtuoso 가 <tfoot> 에 직접 sticky 를 건다).
+                                // 합계행 높이를 footerHeight(미지정 시 rowHeight) 로 정확히
+                                // 고정한다. 그래야 로딩 오버레이의 하단 컷오프(bottom:
+                                // footerHeight ?? rowHeight)와 실제 footer 높이가 일치해
+                                // 오버레이가 footer 위까지만 내려오고 footer 를 덮지 않는다.
                                 "& tr": {
                                     height: footerHeight ?? rowHeight,
+                                    maxHeight: footerHeight ?? rowHeight,
+                                    boxSizing: "border-box",
                                 },
                                 "& td": {
-                                    padding: "16px",
+                                    height: footerHeight ?? rowHeight,
+                                    boxSizing: "border-box",
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === "dark"
+                                            ? "#1e1e1e"
+                                            : "#ffffff",
+                                    // 세로 padding 을 0 으로 두고 행 높이로 정렬을 맡긴다.
+                                    // (가로 16px 유지) — 16px 세로 padding 이면 실제 footer 가
+                                    // footerHeight 보다 커져 오버레이 컷오프와 어긋난다.
+                                    padding: "0 16px",
                                     color: "inherit",
                                     fontSize: "0.875rem",
-                                    borderTop: "1px solid #000000",
-                                    borderBottom: "none",
+                                    // 구분선은 실제 border 대신 inset box-shadow 로 그린다.
+                                    // collapsed-border 픽셀 경계 공유로 인한 깜빡임을 피한다.
+                                    border: "none",
+                                    boxShadow: "inset 0 1px 0 0 #000000",
                                 },
                             },
                             ...(Array.isArray(footerSx)
