@@ -117,6 +117,8 @@ function App() {
     // Optional - Infinite Scroll
     loading={boolean}                       // Loading state (default: false)
     onLoadMore={(offset, limit) => void}    // Load more callback (enables infinite scroll when provided)
+    // ⚠️ onLoadMore 계약: 호출되면 반드시 이행해서 data 가 늘어나거나 loading 이 토글돼야 합니다.
+    //    (정렬/검색/필터로 목록을 1페이지로 되돌리면 컴포넌트가 자동으로 더보기 잠금을 풀어 재개합니다.)
 
     // Optional - Sorting
     sortBy={string}                         // Current sort field

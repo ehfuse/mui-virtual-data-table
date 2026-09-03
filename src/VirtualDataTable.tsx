@@ -591,6 +591,15 @@ function VirtualDataTableComponent<T>({
             currentLength < prevLength ||
             (prevLength > 0 && firstRowKey !== prevFirstRowKey);
 
+        // 목록이 교체(정렬/검색/필터로 1페이지 재조회)되면 더보기 래치를 풀어 무한 스크롤이
+        // 다시 동작하게 한다. 래치는 "요청한 길이에서 안 늘면 서버 소진"이라는 전제인데,
+        // 교체로 길이가 우연히 같아지면(예: 100→50 이 아니라 소진 후 다른 검색이 50) 그 전제가
+        // 깨져 onLoadMore 가 영구히 멈춘다. append/빈응답은 위 early-return·동일 firstRowKey 로
+        // 걸러지므로(=dataReplaced=false) 1.1.29 가 고친 "바닥 떨림"은 되살아나지 않는다.
+        if (dataReplaced) {
+            lastLoadMoreLengthRef.current = -1;
+        }
+
         if (virtuosoRef.current && currentLength > 0 && dataReplaced) {
             virtuosoRef.current.scrollToIndex({
                 index: 0,

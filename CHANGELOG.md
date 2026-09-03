@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.31
+
+### Fixed
+
+- **정렬/검색/필터로 목록을 1페이지로 되돌린 뒤 무한 스크롤이 영구히 멈추던 문제를 수정했습니다.** (1.1.29 회귀)
+  - 1.1.29 가 "바닥 떨림"(서버 소진 후 `onLoadMore` 무한 반복)을 막으려고 넣은 더보기 잠금(`lastLoadMoreLengthRef`)이, 목록 교체로 길이가 우연히 같아지면(예: page2 로 늘렸다가 정렬로 다시 50건) `요청한 길이 === 현재 길이`가 되어 `onLoadMore` 를 다시 호출하지 않고 데드락됐습니다.
+  - 이미 있던 '진짜 교체' 판별(첫 행 식별자 + 길이)에 맞춰, **교체가 감지되면 더보기 잠금을 함께 해제**하도록 했습니다. append·서버 소진(빈 응답)은 교체로 보지 않으므로 1.1.29 가 고친 바닥 떨림은 재발하지 않습니다.
+
+  Fixed a deadlock (regression from 1.1.29) where infinite scroll permanently stopped after sort/search/filter reset the list to page 1: the load-more latch is now released when a genuine data replacement is detected (first-row id / length), while append and exhausted-server (empty) responses still keep the latch so the 1.1.29 bottom-jitter fix stays intact.
+
+> 참고: npm 에 1.1.30 이 있었으나 1.1.29 와 동일 커밋의 버전업(코드 변경 없음)이라, 이 수정은 1.1.31 로 배포합니다.
+
 ## 1.1.29
 
 ### Fixed
