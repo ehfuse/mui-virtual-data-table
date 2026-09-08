@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.34
+
+### Changed
+
+- **`variant="notion"` 에 바깥 테두리와 종이 여백을 더했습니다.** 표 둘레에 1px 테두리(4px 모서리)를 긋고 종이 사방에 여백(좌우 `paddingX`, 상하 12px)을 둬 `@ehfuse/taskbox` 목록표와 같은 틀이 됩니다. 머리의 윗선·좌우선은 테두리가 대신합니다.
+
+  `variant="notion"` now draws an outer 1px frame (4px radius) and pads the paper on all sides (horizontal `paddingX`, vertical 12px), matching `@ehfuse/taskbox` list tables.
+
 ## 1.1.33
 
 > 1.1.32 는 npm 이 staged 상태로 잡아 두어(등록 뒤 목록에 안 보이고 같은 번호로 다시 못 올림) 1.1.33 으로 배포한다.

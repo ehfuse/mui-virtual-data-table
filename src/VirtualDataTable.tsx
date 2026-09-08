@@ -79,6 +79,8 @@ const NOTION_LIGHT = {
     headerColor: "#787774",
     hoverBg: "#f8f8f7",
 };
+/** 노션풍 종이 위아래 여백 — 좌우 기본(12px)과 같다. */
+const NOTION_PADDING_Y = "12px";
 const NOTION_DARK = {
     bg: "#1e1e1e",
     border: "#2c333c",
@@ -401,7 +403,8 @@ function VirtualDataTableComponent<T>({
                                     display: "none",
                                 },
                                 "& .MuiTable-root": {
-                                    paddingRight: paddingX,
+                                    // 노션풍은 좌우 여백을 종이(Paper/Box) 쪽에 준다 — 테두리가 여백 안쪽에 그려져야 한다.
+                                    paddingRight: notion ? 0 : paddingX,
                                     paddingTop: paddingTop,
                                     paddingBottom: paddingBottom,
                                 },
@@ -411,7 +414,7 @@ function VirtualDataTableComponent<T>({
                 );
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [], // 빈 배열: 최초 마운트 시에만 생성, scrollbars, paddingX, paddingTop, paddingBottom은 클로저로 고정
+        [], // 빈 배열: 최초 마운트 시에만 생성, scrollbars, paddingX, paddingTop, paddingBottom, notion 은 클로저로 고정
     );
 
     // Striped row 배경색 계산
@@ -1425,6 +1428,11 @@ function VirtualDataTableComponent<T>({
                     // 셀렉터를 컨테이너에서 내리는 것은 행 컴포넌트를 건드리지 않기 위해서다(행 재렌더 비용).
                     ...(notion
                         ? {
+                              // 바깥 테두리 — 업무함 표(border 1px + radius 4px)와 같다. 가상화라 내용 높이에 맞춰 줄이지 못하고
+                              // 종이 안쪽 여백 안에서 세로를 꽉 채운다. 머리의 윗선·좌우선은 이 테두리가 대신한다.
+                              border: `1px solid ${notionTokens.borderStrong}`,
+                              borderRadius: "4px",
+                              overflow: "hidden",
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
@@ -1433,7 +1441,7 @@ function VirtualDataTableComponent<T>({
                                   fontWeight: "500 !important",
                                   color: notionTokens.headerColor,
                                   backgroundColor: `${notionTokens.bg} !important`,
-                                  borderTop: `1px solid ${notionTokens.borderStrong}`,
+                                  borderTop: "none",
                                   borderBottom: `1px solid ${notionTokens.borderStrong}`,
                                   // 칸 사이 세로선 — 마지막 칸 뒤에는 긋지 않는다(바깥 테두리와 겹쳐 두 줄로 보인다).
                                   borderRight: `1px solid ${notionTokens.border}`,
@@ -1550,6 +1558,11 @@ function VirtualDataTableComponent<T>({
         </Box>
     );
 
+    // 노션풍은 사방 여백 — 업무함처럼 표가 종이 가장자리에 붙지 않는다(좌우 paddingX, 상하 NOTION_PADDING_Y).
+    const notionFramePadding = notion
+        ? { paddingRight: paddingX, paddingTop: NOTION_PADDING_Y, paddingBottom: NOTION_PADDING_Y }
+        : {};
+
     return showPaper ? (
         <Paper
             className="grow"
@@ -1557,6 +1570,8 @@ function VirtualDataTableComponent<T>({
             sx={{
                 padding: 0,
                 paddingLeft: paddingX,
+                ...notionFramePadding,
+                boxSizing: "border-box",
                 height: "100%",
                 minHeight: 0,
                 flex: 1,
@@ -1572,6 +1587,8 @@ function VirtualDataTableComponent<T>({
             style={{
                 padding: 0,
                 paddingLeft: paddingX,
+                ...notionFramePadding,
+                boxSizing: "border-box",
                 height: "100%",
                 minHeight: 0,
                 flex: 1,
