@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.32
+
+### Added
+
+- **`variant="notion"` — 노션풍 표 모양을 추가했습니다.** `@ehfuse/taskbox` 목록표와 같은 값(머리 40px · 13px 회색 머리글 · 칸 사이 세로선 · 옅은 가로선 `#e6e6e3` · 단색 호버 `#f8f8f7`, 다크는 같은 이름의 다크 값)이라, 업무함 표와 나란히 쓰이는 목록(전자결재·게시판)이 다른 제품처럼 보이지 않습니다. 기본값 `"default"` 는 종전 모양 그대로이고, `columnHeight`·`paddingX`·`rowHoverColor`·`rowHoverOpacity` 를 직접 주면 그 값이 이깁니다.
+
+  Added `variant="notion"`: a Notion-like table look (40px header, 13px grey header text, vertical cell dividers, light row borders, flat hover) matching `@ehfuse/taskbox` list tables. `"default"` is unchanged; explicit `columnHeight`/`paddingX`/`rowHoverColor`/`rowHoverOpacity` still win.
+
 ## 1.1.31
 
 ### Fixed

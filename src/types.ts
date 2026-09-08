@@ -108,4 +108,10 @@ export interface VirtualDataTableProps<T> {
     showFooter?: boolean; // 하단 합계 행(tfoot) 표시 여부 (기본값: 컬럼에 footer 가 하나라도 있으면 자동 표시)
     footerHeight?: number; // 하단 합계 행 높이 (px, 기본값: rowHeight)
     footerSx?: SxProps<Theme>; // 하단 합계 행(tfoot) 스타일
+    /**
+     * 표 생김새. "notion" 은 @ehfuse/taskbox 목록표와 같은 노션풍이다 — 낮은 머리(40px)·13px 회색 머리글·칸 사이 세로선·
+     * 옅은 가로선·단색 호버. 업무함 표와 나란히 쓰이는 목록(전자결재·게시판)이 다른 제품처럼 보이지 않게 둔 값이다.
+     * 기본값 "default" 는 종전 모양 그대로다. columnHeight·paddingX·rowHoverColor 를 따로 주면 그 값이 이긴다.
+     */
+    variant?: "default" | "notion";
 }

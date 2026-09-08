@@ -45,6 +45,7 @@ import {
     TableSortLabel,
     Paper,
     Typography,
+    useTheme,
     type SxProps,
     type Theme,
 } from "@mui/material";
@@ -67,6 +68,25 @@ const ROW_CLICK_DRAG_THRESHOLD_PX = 5;
 /**
  * 데이터 기반 무한 스크롤 및 가상화를 지원하는 테이블 컴포넌트
  */
+/**
+ * 노션풍(variant="notion") 색 — @ehfuse/taskbox 의 목록표 팔레트(light: border/borderStrong/textSecondary/surfaceHover,
+ * dark: 같은 이름의 다크 값)를 그대로 옮긴 것이다. 두 패키지가 서로를 참조하지 않아 값을 베껴 둔다 — 그쪽이 바뀌면 여기도 맞춘다.
+ */
+const NOTION_LIGHT = {
+    bg: "#ffffff",
+    border: "#e6e6e3",
+    borderStrong: "#dedddb",
+    headerColor: "#787774",
+    hoverBg: "#f8f8f7",
+};
+const NOTION_DARK = {
+    bg: "#1e1e1e",
+    border: "#2c333c",
+    borderStrong: "#3b434e",
+    headerColor: "#a3adbb",
+    hoverBg: "#272d36",
+};
+
 function VirtualDataTableComponent<T>({
     data,
     loading = false,
@@ -76,7 +96,7 @@ function VirtualDataTableComponent<T>({
     selectedRowId,
     selectedRowSx,
     rowHeight = 50,
-    columnHeight = 56,
+    columnHeight: columnHeightProp,
     striped,
     rowDivider = true,
     onSort,
@@ -84,11 +104,11 @@ function VirtualDataTableComponent<T>({
     sortBy,
     sortDirection,
     showPaper = true,
-    paddingX = "1rem",
+    paddingX: paddingXProp,
     paddingTop = 0,
     paddingBottom = 0,
-    rowHoverColor,
-    rowHoverOpacity,
+    rowHoverColor: rowHoverColorProp,
+    rowHoverOpacity: rowHoverOpacityProp,
     viewportBuffer,
     overscan,
     scrollbars,
@@ -97,7 +117,17 @@ function VirtualDataTableComponent<T>({
     showFooter,
     footerHeight,
     footerSx,
+    variant = "default",
 }: VirtualDataTableProps<T>) {
+    // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
+    const notion = variant === "notion";
+    const muiTheme = useTheme();
+    const notionTokens = muiTheme.palette.mode === "dark" ? NOTION_DARK : NOTION_LIGHT;
+    const columnHeight = columnHeightProp ?? (notion ? 40 : 56);
+    const paddingX = paddingXProp ?? (notion ? "12px" : "1rem");
+    // 호버는 단색(불투명) — 기본 모양의 반투명 검정은 흰 종이 위에서 회색이 아니라 탁한 색으로 보인다.
+    const rowHoverColor = rowHoverColorProp ?? (notion ? notionTokens.hoverBg : undefined);
+    const rowHoverOpacity = rowHoverOpacityProp ?? (notion ? 1 : undefined);
     const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
     const defaultViewportBufferBottom = Math.max(rowHeight * 12, 480);
     const viewportBufferTop =
@@ -1391,6 +1421,31 @@ function VirtualDataTableComponent<T>({
                     },
                     // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
                     ...(selectedRowCssSx ?? {}),
+                    // 노션풍 — 머리·칸의 인라인 style(padding·fontWeight)을 덮어야 해서 !important 다.
+                    // 셀렉터를 컨테이너에서 내리는 것은 행 컴포넌트를 건드리지 않기 위해서다(행 재렌더 비용).
+                    ...(notion
+                        ? {
+                              "& thead tr th": {
+                                  height: columnHeight,
+                                  boxSizing: "border-box",
+                                  padding: "0 14px !important",
+                                  fontSize: 13,
+                                  fontWeight: "500 !important",
+                                  color: notionTokens.headerColor,
+                                  backgroundColor: `${notionTokens.bg} !important`,
+                                  borderTop: `1px solid ${notionTokens.borderStrong}`,
+                                  borderBottom: `1px solid ${notionTokens.borderStrong}`,
+                                  // 칸 사이 세로선 — 마지막 칸 뒤에는 긋지 않는다(바깥 테두리와 겹쳐 두 줄로 보인다).
+                                  borderRight: `1px solid ${notionTokens.border}`,
+                                  "&:last-of-type": { borderRight: "none" },
+                              },
+                              "& tbody tr td": {
+                                  padding: "0 14px !important",
+                                  fontSize: 14,
+                                  borderBottom: `1px solid ${notionTokens.border}`,
+                              },
+                          }
+                        : {}),
                 } as SxProps<Theme>
             }
         >
