@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.35
+
+### Fixed
+
+- **휠로 맨 위(또는 맨 아래)까지 올린 뒤 스크롤바가 사라지지 않던 문제를 고쳤습니다.** 표가 `@ehfuse/overlay-scrollbar` 를 번들에 품고 있어 빌드 당시의 옛 판이 굳어 있었습니다 — 스크롤바 패키지에서 고친 내용이 표에는 닿지 않았습니다. 이제 번들에 넣지 않고 의존성(`^1.7.30`)으로 앱의 한 벌을 씁니다.
+
+  Fixed the scrollbar staying visible after wheeling to the top. The table used to bundle a stale copy of `@ehfuse/overlay-scrollbar`; it is now an external dependency (`^1.7.30`) so fixes there reach the table.
+
 ## 1.1.34
 
 ### Changed

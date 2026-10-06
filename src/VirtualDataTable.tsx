@@ -59,7 +59,7 @@ import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
 
 // OverlayScrollbar 설정을 컴포넌트 외부에 상수로 선언 (재렌더링 시 동일한 참조 유지)
 const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
-    alignment: "right" as const,
+    alignment: "default" as const, // 옛 값 "right" 는 1.7 타입에서 사라졌다 — 동작은 같다("outside" 가 아니면 안쪽 정렬)
     margin: 0,
     radius: 0,
 };
