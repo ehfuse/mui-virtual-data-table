@@ -133,11 +133,20 @@ function VirtualDataTableComponent<T>({
     renderFullWidthRow,
     fullWidthRowSx,
     onRowContextMenu,
+    pinnedRows,
+    pinnedRowsMaxHeight,
+    pinnedRowsSx,
+    resetScrollOnDataChange = true,
+    rowKeyFromId = false,
+    onEndReached,
+    colorMode,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
     const muiTheme = useTheme();
-    const notionTokens = muiTheme.palette.mode === "dark" ? NOTION_DARK : NOTION_LIGHT;
+    // colorMode 를 주면 앱 테마와 달리 이 표만 그 모드로 칠한다(앱은 밝은데 업무함만 어두운 경우).
+    const notionTokens = (colorMode ?? muiTheme.palette.mode) === "dark" ? NOTION_DARK : NOTION_LIGHT;
+    const hasPinnedRows = (pinnedRows?.length ?? 0) > 0;
     const columnHeight = columnHeightProp ?? (notion ? 40 : 56);
     // 노션풍 줄 높이 기본 48 — 업무함 목록 표 · 전자결재 표가 쓰는 값이다.
     const rowHeight = rowHeightProp ?? (notion ? 48 : 50);
@@ -340,6 +349,16 @@ function VirtualDataTableComponent<T>({
                         if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                             return;
                         }
+                        // 머리 아래 고정 줄 영역(pinnedRows)처럼 안에서 따로 굴리는 상자 위에서는 그 상자를 먼저 굴린다 —
+                        // 여기서 막으면 그 영역의 6번째 줄부터는 볼 방법이 없다. 끝에 닿았으면 본문을 굴린다.
+                        const inner = (e.target as HTMLElement | null)?.closest?.("[data-vdt-inner-scroll]") as HTMLElement | null;
+                        if (inner && el.contains(inner)) {
+                            const canScroll =
+                                e.deltaY < 0
+                                    ? inner.scrollTop > 0
+                                    : inner.scrollTop + inner.clientHeight < inner.scrollHeight - 1;
+                            if (canScroll) return;
+                        }
                         e.preventDefault();
                         let delta = e.deltaY;
                         // deltaMode 1 = 라인 단위, 2 = 페이지 단위 변환
@@ -521,6 +540,10 @@ function VirtualDataTableComponent<T>({
     getRowIdRef.current = getRowId;
     const onRowContextMenuRef = useRef(onRowContextMenu);
     onRowContextMenuRef.current = onRowContextMenu;
+    const onEndReachedRef = useRef(onEndReached);
+    onEndReachedRef.current = onEndReached;
+    // 고정 줄(pinnedRows)은 머리 안에 그리는데 머리 내용이 줄 부품보다 먼저 만들어진다 — 줄 부품은 ref 로 늦게 잡는다.
+    const rowComponentRef = useRef<React.ComponentType<any> | null>(null);
 
     // 고정 열(pinned: "left")이 붙을 왼쪽 자리 — 앞쪽 고정 열 폭의 합. 고정 열이 아니면 없다.
     const pinnedLeft = useMemo(() => {
@@ -532,6 +555,15 @@ function VirtualDataTableComponent<T>({
             left += typeof col.width === "number" ? col.width : 0;
         });
         return map;
+    }, [columns]);
+    // 표 최소 폭 — minWidth 를 준 열이 있을 때만. 열마다 width(숫자) 또는 minWidth 의 합이고, 틀이 좁으면 가로로 민다.
+    const tableMinWidth = useMemo(() => {
+        if (!columns.some((col) => typeof col.minWidth === "number")) return undefined;
+        return columns.reduce(
+            (sum, col) =>
+                sum + (typeof col.width === "number" ? col.width : typeof col.minWidth === "number" ? col.minWidth : 0),
+            0,
+        );
     }, [columns]);
     /** 고정 열 칸의 sticky 자리. 머리 칸은 본문 고정 칸보다 위(zIndex 3)에 선다. */
     const pinnedStyle = useCallback(
@@ -602,6 +634,7 @@ function VirtualDataTableComponent<T>({
     const handleEndReached = useCallback(
         (endIndex: number) => {
             const rangeStart = perfDebugEnabled ? performance.now() : 0;
+            onEndReachedRef.current?.();
             if (!onLoadMore) {
                 if (perfDebugEnabled) {
                     perfStatsRef.current.rangeChangedCalls += 1;
@@ -663,6 +696,8 @@ function VirtualDataTableComponent<T>({
         }
     }, [data.length]);
 
+    const resetScrollOnDataChangeRef = useRef(resetScrollOnDataChange);
+    resetScrollOnDataChangeRef.current = resetScrollOnDataChange;
     // 이전 데이터 길이 / 첫 행 식별자를 추적
     const prevDataLengthRef = useRef(data.length);
     const prevFirstRowKeyRef = useRef<unknown>(undefined);
@@ -706,7 +741,7 @@ function VirtualDataTableComponent<T>({
             lastLoadMoreLengthRef.current = -1;
         }
 
-        if (virtuosoRef.current && currentLength > 0 && dataReplaced) {
+        if (virtuosoRef.current && currentLength > 0 && dataReplaced && resetScrollOnDataChangeRef.current) {
             virtuosoRef.current.scrollToIndex({
                 index: 0,
                 align: "start",
@@ -722,7 +757,7 @@ function VirtualDataTableComponent<T>({
      * 테이블 고정 헤더 컨텐츠 정의 (기존 VirtualDataTable 스타일)
      * 정렬 기능이 포함된 컬럼 헤더를 렌더링
      */
-    const fixedHeaderContent = useCallback(() => {
+    const headerRowsContent = useCallback(() => {
         // 1. 그룹 정보 추출
         const groupMap: { [group: string]: DataColumn<T>[] } = {};
         const noGroupColumns: DataColumn<T>[] = [];
@@ -752,7 +787,7 @@ function VirtualDataTableComponent<T>({
                             {...col.headerProps}
                             style={{
                                 width: col.width,
-                                minWidth: col.width,
+                                minWidth: col.width ?? col.minWidth,
                                 ...col.style,
                                 fontWeight: "bold",
                                 position: "sticky",
@@ -1121,7 +1156,17 @@ function VirtualDataTableComponent<T>({
                 );
             }
 
-            const cells = columns.map((column) => {
+            // 오른쪽으로 합친 칸(colSpan)에 덮인 열 수 — 그만큼 다음 열들의 칸을 그리지 않는다.
+            let coveredByColSpan = 0;
+            const cells = columns.map((column, columnIndex) => {
+                if (coveredByColSpan > 0) {
+                    coveredByColSpan -= 1;
+                    return null;
+                }
+                const colSpan = column.colSpan
+                    ? Math.max(1, Math.min(column.colSpan(item, index), columns.length - columnIndex))
+                    : 1;
+                coveredByColSpan = colSpan - 1;
                 const cellStart = perfDebugEnabled ? performance.now() : 0;
                 const cellValue = column.render
                     ? column.render(item, index)
@@ -1148,6 +1193,7 @@ function VirtualDataTableComponent<T>({
                         key={String(column.id)}
                         align={column.align || "left"}
                         rowSpan={span > 1 ? span : undefined}
+                        colSpan={colSpan > 1 ? colSpan : undefined}
                         data-vdt-pad={customPadding ? "" : undefined}
                         data-vdt-pinned={pinned ? "" : undefined}
                         data-vdt-cell-click={onCellClick ? "" : undefined}
@@ -1164,8 +1210,8 @@ function VirtualDataTableComponent<T>({
                                 : undefined
                         }
                         style={{
-                            width: column.width,
-                            minWidth: column.width,
+                            // 합친 칸은 폭을 박지 않는다 — 열 폭은 머리 줄이 정하고, 박으면 합친 폭이 한 열 폭으로 줄어든다.
+                            ...(colSpan > 1 ? {} : { width: column.width, minWidth: column.width ?? column.minWidth }),
                             ...(column.primary ? { fontSize: 15 } : {}),
                             ...column.style,
                             ...(column.cellStyle ? column.cellStyle(item, index) : {}),
@@ -1192,6 +1238,71 @@ function VirtualDataTableComponent<T>({
         },
         [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle],
     );
+
+    /**
+     * 머리 내용 = 머리 줄 + (있으면) 고정 줄 영역. 고정 줄은 머리(thead)와 함께 위에 붙어 본문 스크롤과 무관하게 보인다.
+     * 머리 안에 본문 칸을 그리려면 한 칸(colSpan 전체) 안에 같은 열 구성의 표를 하나 더 둔다 — 열 폭은 colgroup 으로 바깥 표와 맞추고
+     * (첫 줄이 묶음 띠 줄이면 그 줄로는 열 폭을 못 정한다), 가로로 밀면 바깥 표와 함께 움직인다.
+     * 안쪽 tbody 를 MUI TableBody 로 감싸야 칸이 머리 칸(th)이 아니라 본문 칸(td)으로 그려진다.
+     */
+    const fixedHeaderContent = useCallback(() => {
+        const headerRows = headerRowsContent();
+        if (!pinnedRows || pinnedRows.length === 0) return headerRows;
+        const RowComponent = rowComponentRef.current;
+        return (
+            <>
+                {headerRows}
+                <tr data-vdt-pinned-area="">
+                    <td colSpan={columns.length} style={{ padding: 0, border: 0 }}>
+                        <Box
+                            data-vdt-inner-scroll=""
+                            sx={[
+                                {
+                                    maxHeight: pinnedRowsMaxHeight,
+                                    overflowY: pinnedRowsMaxHeight ? "auto" : "visible",
+                                    overflowX: "hidden",
+                                    scrollbarWidth: "thin",
+                                    borderBottom: `1px solid ${notion ? notionTokens.borderStrong : "rgba(224, 224, 224, 1)"}`,
+                                    // 영역 아랫선이 경계를 맡는다 — 마지막 줄 아래선까지 그으면 이중선이다.
+                                    "& tbody tr:last-of-type > td": { borderBottom: "none" },
+                                },
+                                ...(Array.isArray(pinnedRowsSx) ? pinnedRowsSx : pinnedRowsSx ? [pinnedRowsSx] : []),
+                            ]}
+                        >
+                            <table
+                                style={{
+                                    width: "100%",
+                                    tableLayout,
+                                    borderCollapse: "separate",
+                                    borderSpacing: 0,
+                                }}
+                            >
+                                <colgroup>
+                                    {columns.map((col) => (
+                                        <col key={String(col.id)} style={{ width: col.width, minWidth: col.width ?? col.minWidth }} />
+                                    ))}
+                                </colgroup>
+                                <MuiTableBody>
+                                    {pinnedRows.map((item, index) =>
+                                        RowComponent ? (
+                                            <RowComponent
+                                                key={getRowId ? String(getRowId(item, index)) : `p${index}`}
+                                                item={item}
+                                                data-index={index}
+                                                data-vdt-pinned-row=""
+                                            >
+                                                {rowContent(index, item)}
+                                            </RowComponent>
+                                        ) : null,
+                                    )}
+                                </MuiTableBody>
+                            </table>
+                        </Box>
+                    </td>
+                </tr>
+            </>
+        );
+    }, [headerRowsContent, pinnedRows, pinnedRowsMaxHeight, pinnedRowsSx, columns, rowContent, tableLayout, getRowId, notion, notionTokens]);
 
     // 컬럼에 footer 렌더러가 하나라도 있거나 showFooter 가 명시되면 하단 합계 행을 표시한다.
     const hasFooter =
@@ -1255,6 +1366,7 @@ function VirtualDataTableComponent<T>({
                     sx={{
                         borderCollapse: "separate",
                         tableLayout,
+                        ...(tableMinWidth ? { minWidth: tableMinWidth } : {}),
                         // 틀 없이 그릴 때는 오른쪽 덧여백이 가로 넘침(가로 막대)을 만든다 — 표가 상자 폭에 꼭 맞게 둔다.
                         marginRight: framed ? "16px" : 0,
                         // 하단 합계 행이 있으면 데이터가 적어도 테이블이 컨테이너를 채우게 한다.
@@ -1271,9 +1383,10 @@ function VirtualDataTableComponent<T>({
                         ref={ref}
                         sx={{
                             userSelect: "none",
-                            "& tr": {
+                            // 바로 아래 줄(머리 줄)만 — 머리 안 고정 줄 영역(pinnedRows)의 줄까지 머리 높이 · 굵기를 받으면 안 된다.
+                            "& > tr": {
                                 height: columnHeight,
-                                "& th": {
+                                "& > th": {
                                     padding: "16px",
                                     position: "sticky",
                                     top: 0,
@@ -1554,8 +1667,10 @@ function VirtualDataTableComponent<T>({
             tableLayout,
             framed,
             autoRowHeight,
+            tableMinWidth,
         ],
     );
+    rowComponentRef.current = (VirtuosoTableComponents as Record<string, unknown>).TableRow as React.ComponentType<any>;
 
     const resolvedVirtuosoComponents = VirtuosoTableComponents;
     // autoHeight 는 같은 표 부품(머리 · 줄 · 합계)을 가상화 없이 그대로 쓴다 — 칸 모양이 가상 표와 같다.
@@ -1576,9 +1691,11 @@ function VirtualDataTableComponent<T>({
                     width: "100%",
                     "& .MuiTableHead-root": {
                         backgroundColor: (theme: Theme) =>
-                            theme.palette.mode === "dark"
-                                ? "#1e1e1e !important"
-                                : "#ffffff !important",
+                            notion
+                                ? `${notionTokens.bg} !important`
+                                : theme.palette.mode === "dark"
+                                  ? "#1e1e1e !important"
+                                  : "#ffffff !important",
                     },
                     // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
                     ...(selectedRowCssSx ?? {}),
@@ -1645,7 +1762,7 @@ function VirtualDataTableComponent<T>({
                               // 맞닿는 경우: 내용 높이만큼 서는 표(autoHeight), 줄이 영역보다 길어 끝까지 내리면 바닥에 닿는 표, 합계 줄이 있는 표.
                               // 줄이 적어 아래가 비는 표는 그대로 긋는다 — 줄이 어디서 끝나는지 보여야 한다.
                               ...(data.length > 0 && (autoHeight || listOverflows || hasFooter)
-                                  ? { [`& tbody tr[data-index="${data.length - 1}"] td`]: { borderBottom: "none" } }
+                                  ? { [`& tbody tr[data-index="${data.length - 1}"]:not([data-vdt-pinned-row]) td`]: { borderBottom: "none" } }
                                   : {}),
                           }
                         : {}),
@@ -1682,6 +1799,11 @@ function VirtualDataTableComponent<T>({
                     fixedHeaderContent={fixedHeaderContent}
                     fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
                     itemContent={rowContent}
+                    computeItemKey={
+                        rowKeyFromId && getRowId
+                            ? (index: number, item: T) => (item ? getRowId(item, index) : `vdt-${index}`)
+                            : undefined
+                    }
                     endReached={handleEndReached}
                     scrollerRef={(el) => {
                         scrollerElRef.current = el instanceof HTMLElement ? el : null;
@@ -1700,7 +1822,7 @@ function VirtualDataTableComponent<T>({
             )}
 
             {/* 빈 데이터 표시 — 노션풍은 머리 아래에 옅은 글 한 줄(업무함 목록 표의 빈 목록과 같은 모양). */}
-            {data.length === 0 && !loading && notion && typeof emptyMessage === "string" && (
+            {data.length === 0 && !loading && !hasPinnedRows && notion && typeof emptyMessage === "string" && (
                 <Box
                     sx={{
                         position: autoHeight ? "static" : "absolute",
@@ -1716,7 +1838,7 @@ function VirtualDataTableComponent<T>({
                     {emptyMessage}
                 </Box>
             )}
-            {data.length === 0 && !loading && !(notion && typeof emptyMessage === "string") && (
+            {data.length === 0 && !loading && !hasPinnedRows && !(notion && typeof emptyMessage === "string") && (
                 <Box
                     sx={{
                         position: "absolute",

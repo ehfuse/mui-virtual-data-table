@@ -68,6 +68,16 @@ export interface DataColumn<T> {
      * 가상화로 보이는 줄만 그리면 덮은 칸이 사라질 수 있어 autoHeight 표 · 줄이 적은 표에서만 쓴다.
      */
     rowSpan?: (item: T, index: number) => number;
+    /**
+     * 칸을 오른쪽 열까지 합친다(1.3.0) — 그 줄에서 합칠 열 수를 돌려준다(1 = 합치지 않음). 덮인 오른쪽 열의 칸은 그리지 않는다.
+     * 줄마다 칸 구성이 다른 표(일정 줄은 책임자 · 참조자 두 칸을 참석자 한 칸으로)에서 쓴다.
+     */
+    colSpan?: (item: T, index: number) => number;
+    /**
+     * width 를 비운 열(남는 폭을 나눠 갖는 열)의 최소 폭 px(1.3.0). 표의 최소 폭은 열마다 width(숫자) 또는 minWidth 의 합이 되고,
+     * 틀이 그보다 좁으면 가로로 민다 — 제목처럼 남는 폭을 다 가져가되 좁은 화면에서 0 으로 접히면 안 되는 열.
+     */
+    minWidth?: number;
 }
 
 /** 정렬 방향 타입 */
@@ -169,4 +179,30 @@ export interface VirtualDataTableProps<T> {
     autoHeight?: boolean;
     /** 줄 우클릭 — 끌어서 민 뒤가 아니면 부른다. */
     onRowContextMenu?: (item: T, index: number, event: React.MouseEvent) => void;
+    /**
+     * 머리 줄 바로 아래 붙어 스크롤과 무관하게 늘 보이는 줄들(1.3.0) — "미확인 · 검수 대기" 처럼 놓치면 안 되는 줄을 목록 위에 세운다.
+     * 본문(data)과 같은 열 · 칸 렌더 · 묶음 띠 줄(renderFullWidthRow) · 클릭 · 우클릭 · 선택 줄 모양을 쓴다(onRowClick 의 index 는 이 배열 안의 순번).
+     * 같은 줄을 data 에도 넣으면 두 번 보이니 소비처가 뺀다.
+     */
+    pinnedRows?: T[];
+    /** pinnedRows 영역의 최대 높이 px — 넘치면 그 영역만 따로 굴린다(기본: 제한 없음). */
+    pinnedRowsMaxHeight?: number;
+    /** pinnedRows 영역(본문과의 경계선 등) 스타일. 기본은 노션풍 진한 회색 아랫선 1px. */
+    pinnedRowsSx?: SxProps<Theme>;
+    /**
+     * data 가 "바뀌면"(길이가 줄거나 첫 줄이 달라지면) 맨 위로 되돌릴지(기본 true). 묶음 접기 · 완료 숨기기처럼 줄이 빠져도
+     * 보던 자리를 지켜야 하는 목록은 false 로 두고, 조건이 바뀔 때 맨 위로 보내려면 표에 key 를 바꿔 다시 그린다(1.3.0).
+     */
+    resetScrollOnDataChange?: boolean;
+    /**
+     * 줄의 React key 를 getRowId 값으로 둔다(기본 false = 순번). 줄 안에 입력 중인 칸(인라인 편집)이 있는 목록은 켠다 —
+     * 순번 key 면 위에 줄이 끼어들 때 입력 상태가 다른 줄로 옮겨 간다(1.3.0). getRowId 가 줄마다 달라야 한다.
+     */
+    rowKeyFromId?: boolean;
+    /** 목록 끝에 닿을 때마다 부른다(1.3.0) — onLoadMore 와 달리 최소 개수 · 같은 길이 재요청 막기 없이 그대로 알린다(소비처가 중복을 거른다). */
+    onEndReached?: () => void;
+    /**
+     * 노션풍 색 모드(1.3.0). 기본은 MUI 테마의 palette.mode 를 따른다 — 앱 테마는 밝은데 이 화면만 어둡게 그리는 경우(업무함 다크 스위치) 준다.
+     */
+    colorMode?: "light" | "dark";
 }

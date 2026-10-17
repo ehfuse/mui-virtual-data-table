@@ -142,6 +142,15 @@ function App() {
     renderFullWidthRow={(item, index) => ReactNode | null} // Group band row: one cell spanning all columns (null = normal row)
     fullWidthRowSx={SxProps}                // Style of the band row cell (background, padding)
     onRowContextMenu={(item, index, event) => void}
+
+    // Optional - 1.3.0
+    pinnedRows={T[]}                        // Rows pinned under the header (always visible, same columns/cells/band rows)
+    pinnedRowsMaxHeight={number}            // Max height of the pinned area in px — it scrolls on its own beyond that
+    pinnedRowsSx={SxProps}                  // Pinned area style (default: 1px strong bottom border)
+    resetScrollOnDataChange={boolean}       // false: keep the scroll position when rows are removed (collapse groups); remount with key to reset
+    rowKeyFromId={boolean}                  // Use getRowId as the React key of rows (rows with inline editors)
+    onEndReached={() => void}               // Fired every time the end is reached (no minimum / no same-length latch)
+    colorMode={"light" | "dark"}            // notion colors independent of the MUI palette mode
 />
 ```
 
@@ -155,6 +164,24 @@ function App() {
 { id: "m1", text: "1월", cellPadding: "4px 0" }              // body padding override
 { id: "t", text: "업무", cellStyle: (item) => ({ color: "#999" }) } // per-row cell style
 { id: "c", text: "열", headerProps: { draggable: true, onDrop } }  // extra th attributes (drag to reorder, title…)
+{ id: "who", text: "책임자", width: 110, colSpan: (item) => (item.isEvent ? 2 : 1) } // 1.3.0: merge right (the covered column is not drawn)
+{ id: "title", text: "제목", minWidth: 220 }                // 1.3.0: flexible column (no width) with a minimum — table min width = sum, scrolls sideways
+```
+
+Pinned rows example (1.3.0):
+
+```tsx
+<VirtualDataTable
+    variant="notion"
+    data={rows}                                   // without the pinned ones
+    pinnedRows={[{ kind: "band", label: "미확인" }, ...unconfirmed]}
+    pinnedRowsMaxHeight={49 * 6}                  // band + 5 rows, then it scrolls
+    renderFullWidthRow={(r) => (r.kind === "band" ? r.label : null)}
+    getRowId={(r) => r.id}
+    rowKeyFromId
+    resetScrollOnDataChange={false}
+    ...
+/>
 ```
 
 notion defaults (1.2.0): rowHeight 48, header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
