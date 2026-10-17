@@ -497,6 +497,20 @@ function VirtualDataTableComponent<T>({
     // endReached ↔ onLoadMore 가 무한 반복되는 것을 막는다.
     const lastLoadMoreLengthRef = useRef<number>(-1);
     const virtuosoRef = useRef<any>(null); // TableVirtuoso ref
+    // 줄들이 스크롤 영역보다 긴가 — 길면 맨 끝 줄이 틀 바닥에 닿으므로 그 줄의 아래선을 뺀다(아래 노션 스타일).
+    const scrollerElRef = useRef<HTMLElement | null>(null);
+    const [listOverflows, setListOverflows] = useState(false);
+    const checkListOverflow = useCallback(() => {
+        const el = scrollerElRef.current;
+        if (el) setListOverflows(el.scrollHeight > el.clientHeight + 1);
+    }, []);
+    useEffect(() => {
+        const el = scrollerElRef.current;
+        if (!el || typeof ResizeObserver === "undefined") return;
+        const observer = new ResizeObserver(() => checkListOverflow());
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [checkListOverflow, autoHeight]);
 
     // 소비처가 인라인으로 넘기는 콜백(onRowClick/getRowId)은 매 렌더마다 identity 가 바뀐다.
     // 이를 ref 로 잡아 두면 VirtuosoTableComponents(memo)를 재생성하지 않아도 최신 콜백을 쓸 수 있어,
@@ -1627,6 +1641,12 @@ function VirtualDataTableComponent<T>({
                                   fontSize: 14,
                                   borderBottom: `1px solid ${notionTokens.border}`,
                               },
+                              // 마지막 줄 아래선 — 틀 바닥(또는 합계 줄의 윗선)과 맞닿으면 긋지 않는다. 두 선이 겹쳐 굵은 이중선으로 보였다(2026-10-17).
+                              // 맞닿는 경우: 내용 높이만큼 서는 표(autoHeight), 줄이 영역보다 길어 끝까지 내리면 바닥에 닿는 표, 합계 줄이 있는 표.
+                              // 줄이 적어 아래가 비는 표는 그대로 긋는다 — 줄이 어디서 끝나는지 보여야 한다.
+                              ...(data.length > 0 && (autoHeight || listOverflows || hasFooter)
+                                  ? { [`& tbody tr[data-index="${data.length - 1}"] td`]: { borderBottom: "none" } }
+                                  : {}),
                           }
                         : {}),
                 } as SxProps<Theme>
@@ -1663,6 +1683,11 @@ function VirtualDataTableComponent<T>({
                     fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
                     itemContent={rowContent}
                     endReached={handleEndReached}
+                    scrollerRef={(el) => {
+                        scrollerElRef.current = el instanceof HTMLElement ? el : null;
+                        checkListOverflow();
+                    }}
+                    totalListHeightChanged={checkListOverflow}
                     style={{ height: "100%" }}
                     increaseViewportBy={{
                         top: viewportBufferTop,
