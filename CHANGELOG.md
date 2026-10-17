@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+
+- **노션풍 목록을 한 표로 — 넓은 피벗 · 묶음 · 페이지에 얹는 표를 지원합니다.** 모두 선택 옵션이라 기존 화면은 그대로입니다.
+  - `framed={false}` — 노션풍 바깥 테두리 · 종이 여백 없이, 이미 테두리를 두른 상자에 표를 꽉 채웁니다.
+  - `tableLayout="auto"` — 열 폭이 내용을 따르고 넘치면 가로로 밉니다. `rowHeightMode="auto"` — rowHeight 를 최소 높이로 두고 줄이 내용만큼 늘어납니다.
+  - `autoHeight` — 가상화 · 자체 스크롤 없이 내용 높이만큼 그립니다(페이지가 굴리는 표).
+  - `renderFullWidthRow` · `fullWidthRowSx` — 묶음 띠 줄(모든 열을 합친 한 칸). 접기는 소비처가 data 에서 뺍니다.
+  - `onRowContextMenu`.
+  - 열 옵션: `pinned: "left"`(첫 열 고정), `primary`(본문 15px), `onCellClick`(칸 단위 누르기 · 호버), `rowSpan`, `cellPadding`, `cellStyle`, `headerProps`.
+- **노션풍 기본값** — 줄 높이 48, 선택 줄 모양(`selectedRowSx` 를 안 주면 `#dbeafe` 바탕 + 왼쪽 3px `#3b82f6`, 다크 포함),
+  문자열 빈 목록은 머리 아래 옅은 글 한 줄, 합계 줄은 본문과 같은 여백 · 옅은 윗선.
+
+### Fixed
+
+- 가로 휠(트랙패드 옆 밀기 · Shift+휠)을 막지 않습니다 — 세로 휠만 직접 처리해 넓은 표를 옆으로 밀 수 없었습니다.
+
+
 ## 1.1.35
 
 ### Fixed

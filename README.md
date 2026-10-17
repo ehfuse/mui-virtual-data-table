@@ -133,8 +133,32 @@ function App() {
     emptyMessage={string | React.ReactNode} // Empty state message (default: "NO DATA")
     scrollbars={VDTOverlayScrollbarProps}   // Custom scrollbar options
     LoadingComponent={React.ComponentType}  // Custom loading component
+
+    // Optional - Layout (1.2.0)
+    framed={boolean}                        // notion: outer border + paper padding (default: true). false = fill an already-bordered box
+    tableLayout={"fixed" | "auto"}          // "auto": column widths follow content, wide tables scroll horizontally
+    rowHeightMode={"fixed" | "auto"}        // "auto": rowHeight becomes a minimum, rows grow with content
+    autoHeight={boolean}                    // No virtualization / no own scroll — the table is as tall as its rows (page scrolls)
+    renderFullWidthRow={(item, index) => ReactNode | null} // Group band row: one cell spanning all columns (null = normal row)
+    fullWidthRowSx={SxProps}                // Style of the band row cell (background, padding)
+    onRowContextMenu={(item, index, event) => void}
 />
 ```
+
+### Column options (1.2.0)
+
+```tsx
+{ id: "name", text: "이름", width: 160, pinned: "left" }     // sticky left (numeric width needed for the next pinned column)
+{ id: "name", text: "이름", primary: true }                  // 15px body text for the row's main cell
+{ id: "d1", text: "월", onCellClick: (item, i, e) => {} }    // per-cell click + cell hover (row click is not fired)
+{ id: "who", text: "담당", rowSpan: (item, i) => 2 }         // merge down; return 0 on covered rows (use with autoHeight / short tables)
+{ id: "m1", text: "1월", cellPadding: "4px 0" }              // body padding override
+{ id: "t", text: "업무", cellStyle: (item) => ({ color: "#999" }) } // per-row cell style
+{ id: "c", text: "열", headerProps: { draggable: true, onDrop } }  // extra th attributes (drag to reorder, title…)
+```
+
+notion defaults (1.2.0): rowHeight 48, header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
+string `emptyMessage` = one light grey line under the header, footer cells use the body padding.
 
 ## License
 

@@ -78,6 +78,9 @@ const NOTION_LIGHT = {
     borderStrong: "#dedddb",
     headerColor: "#787774",
     hoverBg: "#f8f8f7",
+    emptyColor: "#9b9a97",
+    selectedBg: "#dbeafe",
+    selectedBar: "#3b82f6",
 };
 /** 노션풍 종이 위아래 여백 — 좌우 기본(12px)과 같다. */
 const NOTION_PADDING_Y = "12px";
@@ -87,6 +90,9 @@ const NOTION_DARK = {
     borderStrong: "#3b434e",
     headerColor: "#a3adbb",
     hoverBg: "#272d36",
+    emptyColor: "#7d8590",
+    selectedBg: "rgba(59, 130, 246, 0.22)",
+    selectedBar: "#60a5fa",
 };
 
 function VirtualDataTableComponent<T>({
@@ -96,8 +102,8 @@ function VirtualDataTableComponent<T>({
     onRowClick,
     getRowId,
     selectedRowId,
-    selectedRowSx,
-    rowHeight = 50,
+    selectedRowSx: selectedRowSxProp,
+    rowHeight: rowHeightProp,
     columnHeight: columnHeightProp,
     striped,
     rowDivider = true,
@@ -115,18 +121,29 @@ function VirtualDataTableComponent<T>({
     overscan,
     scrollbars,
     emptyMessage = "NO DATA",
+    autoHeight = false,
     LoadingComponent,
     showFooter,
     footerHeight,
     footerSx,
     variant = "default",
+    framed = true,
+    rowHeightMode = "fixed",
+    tableLayout = "fixed",
+    renderFullWidthRow,
+    fullWidthRowSx,
+    onRowContextMenu,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
     const muiTheme = useTheme();
     const notionTokens = muiTheme.palette.mode === "dark" ? NOTION_DARK : NOTION_LIGHT;
     const columnHeight = columnHeightProp ?? (notion ? 40 : 56);
-    const paddingX = paddingXProp ?? (notion ? "12px" : "1rem");
+    // 노션풍 줄 높이 기본 48 — 업무함 목록 표 · 전자결재 표가 쓰는 값이다.
+    const rowHeight = rowHeightProp ?? (notion ? 48 : 50);
+    // 틀 없이(framed=false) 그릴 때는 바깥 상자가 이미 테두리를 둘렀다 — 좌우 여백 없이 표가 상자에 꽉 찬다.
+    const paddingX = framed ? (paddingXProp ?? (notion ? "12px" : "1rem")) : 0;
+    const autoRowHeight = rowHeightMode === "auto";
     // 호버는 단색(불투명) — 기본 모양의 반투명 검정은 흰 종이 위에서 회색이 아니라 탁한 색으로 보인다.
     const rowHoverColor = rowHoverColorProp ?? (notion ? notionTokens.hoverBg : undefined);
     const rowHoverOpacity = rowHoverOpacityProp ?? (notion ? 1 : undefined);
@@ -155,6 +172,20 @@ function VirtualDataTableComponent<T>({
     // 컨테이너 sx 에 `tr[data-row-id="..."]` 규칙을 넣으면 selectedRowId 변경 시 components/행을
     // 재렌더하지 않고(컨테이너 1개만 갱신) CSS 로만 강조돼 row 클릭 반응이 즉각적이다.
     // 함수형 selectedRowSx(행마다 동적)는 CSS 로 표현 불가하므로 기존 per-row 경로를 유지한다.
+    // 노션풍은 선택 줄 모양을 기본으로 갖는다 — 옅은 파란 바탕 + 왼쪽 파란 띠 3px(목록 표의 "지금 열어 둔 줄").
+    // 띠는 줄(tr)의 그림자가 브라우저마다 그려지지 않아 첫 칸 안쪽 그림자로 긋는다. 고정 열 칸은 제 바탕을 칠하므로 같은 색을 준다.
+    const notionSelectedSx = useMemo(
+        () =>
+            notion
+                ? {
+                      backgroundColor: notionTokens.selectedBg,
+                      "& > td:first-of-type": { boxShadow: `inset 3px 0 0 ${notionTokens.selectedBar}` },
+                      "& > td[data-vdt-pinned]": { backgroundColor: notionTokens.selectedBg },
+                  }
+                : undefined,
+        [notion, notionTokens],
+    );
+    const selectedRowSx = selectedRowSxProp ?? notionSelectedSx;
     const useCssRowHighlight = !selectedRowSx || typeof selectedRowSx !== "function";
     const selectedRowCssSx = useMemo<Record<string, unknown> | null>(() => {
         if (
@@ -304,6 +335,11 @@ function VirtualDataTableComponent<T>({
                         const wheelStart = perfDebugEnabled
                             ? performance.now()
                             : 0;
+                        // 가로 휠(트랙패드 옆 밀기 · Shift+휠)은 브라우저에 맡긴다 — 아래에서 세로로만 옮기므로 막으면
+                        // 열이 많은 표(tableLayout="auto")를 옆으로 밀 수 없다.
+                        if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                            return;
+                        }
                         e.preventDefault();
                         let delta = e.deltaY;
                         // deltaMode 1 = 라인 단위, 2 = 페이지 단위 변환
@@ -469,6 +505,29 @@ function VirtualDataTableComponent<T>({
     onRowClickRef.current = onRowClick;
     const getRowIdRef = useRef(getRowId);
     getRowIdRef.current = getRowId;
+    const onRowContextMenuRef = useRef(onRowContextMenu);
+    onRowContextMenuRef.current = onRowContextMenu;
+
+    // 고정 열(pinned: "left")이 붙을 왼쪽 자리 — 앞쪽 고정 열 폭의 합. 고정 열이 아니면 없다.
+    const pinnedLeft = useMemo(() => {
+        const map = new Map<string, number>();
+        let left = 0;
+        columns.forEach((col) => {
+            if (col.pinned !== "left") return;
+            map.set(String(col.id), left);
+            left += typeof col.width === "number" ? col.width : 0;
+        });
+        return map;
+    }, [columns]);
+    /** 고정 열 칸의 sticky 자리. 머리 칸은 본문 고정 칸보다 위(zIndex 3)에 선다. */
+    const pinnedStyle = useCallback(
+        (col: DataColumn<T>, head: boolean): React.CSSProperties => {
+            const left = pinnedLeft.get(String(col.id));
+            if (left === undefined) return {};
+            return { position: "sticky", left, zIndex: head ? 3 : 1 };
+        },
+        [pinnedLeft],
+    );
     // truthiness 가 바뀌면(클릭 가능 여부) hover/cursor 스타일이 달라지므로 deps 에는 boolean 만 넣는다.
     const hasRowClick = !!onRowClick;
 
@@ -676,6 +735,7 @@ function VirtualDataTableComponent<T>({
                         <TableCell
                             key={String(col.id)}
                             align={col.align || "left"}
+                            {...col.headerProps}
                             style={{
                                 width: col.width,
                                 minWidth: col.width,
@@ -685,6 +745,8 @@ function VirtualDataTableComponent<T>({
                                 top: 0,
                                 zIndex: 2,
                                 padding: "16px",
+                                ...pinnedStyle(col, true),
+                                ...col.headerProps?.style,
                             }}
                         >
                             {col.sortable ? (
@@ -777,6 +839,7 @@ function VirtualDataTableComponent<T>({
                     key={String(col.id)}
                     rowSpan={2}
                     align={col.align || "left"}
+                    {...col.headerProps}
                     style={{
                         width: col.width,
                         minWidth: col.width,
@@ -786,6 +849,8 @@ function VirtualDataTableComponent<T>({
                         top: 0,
                         zIndex: 2,
                         padding: "16px",
+                        ...pinnedStyle(col, true),
+                        ...col.headerProps?.style,
                     }}
                 >
                     {col.sortable && onSort ? (
@@ -893,6 +958,7 @@ function VirtualDataTableComponent<T>({
                     <TableCell
                         key={String(col.id)}
                         align={col.align || "left"}
+                        {...col.headerProps}
                         style={{
                             width: col.width,
                             minWidth: col.width,
@@ -902,6 +968,8 @@ function VirtualDataTableComponent<T>({
                             top: 0,
                             zIndex: 2,
                             padding: "16px",
+                            ...pinnedStyle(col, true),
+                            ...col.headerProps?.style,
                         }}
                     >
                         {col.sortable && onSort ? (
@@ -992,7 +1060,7 @@ function VirtualDataTableComponent<T>({
                 <MuiTableRow>{secondRowCells}</MuiTableRow>
             </>
         );
-    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight]);
+    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle]);
 
     /**
      * 테이블 행 컨텐츠 렌더링 함수 (기존 VirtualDataTable 스타일)
@@ -1016,6 +1084,29 @@ function VirtualDataTableComponent<T>({
                 return null;
             }
 
+            // 한 칸 줄(묶음 머리 등) — 모든 열을 합친 칸 하나. 여백 · 바탕은 fullWidthRowSx 가 정한다.
+            const fullWidth = renderFullWidthRow
+                ? renderFullWidthRow(item, index)
+                : null;
+            if (fullWidth !== null && fullWidth !== undefined) {
+                return (
+                    <TableCell
+                        colSpan={columns.length}
+                        data-vdt-pad=""
+                        sx={[
+                            { padding: notion ? "0 14px" : "8px 16px" },
+                            ...(Array.isArray(fullWidthRowSx)
+                                ? fullWidthRowSx
+                                : fullWidthRowSx
+                                  ? [fullWidthRowSx]
+                                  : []),
+                        ]}
+                    >
+                        {fullWidth}
+                    </TableCell>
+                );
+            }
+
             const cells = columns.map((column) => {
                 const cellStart = perfDebugEnabled ? performance.now() : 0;
                 const cellValue = column.render
@@ -1032,15 +1123,40 @@ function VirtualDataTableComponent<T>({
                     );
                 }
 
+                const pinned = pinnedLeft.has(String(column.id));
+                const customPadding = column.cellPadding !== undefined;
+                // 아래로 합친 칸에 덮인 줄은 칸을 그리지 않는다.
+                const span = column.rowSpan ? column.rowSpan(item, index) : 1;
+                if (span <= 0) return null;
+                const onCellClick = column.onCellClick;
                 return (
                     <TableCell
                         key={String(column.id)}
                         align={column.align || "left"}
+                        rowSpan={span > 1 ? span : undefined}
+                        data-vdt-pad={customPadding ? "" : undefined}
+                        data-vdt-pinned={pinned ? "" : undefined}
+                        data-vdt-cell-click={onCellClick ? "" : undefined}
+                        onClick={
+                            onCellClick
+                                ? (e: React.MouseEvent) => {
+                                      // 끌어서 민 뒤의 클릭은 칸 누름으로 치지 않는다(줄 클릭과 같은 기준).
+                                      const dx = e.clientX - mouseDownPositionRef.current.x;
+                                      const dy = e.clientY - mouseDownPositionRef.current.y;
+                                      e.stopPropagation();
+                                      if (Math.sqrt(dx * dx + dy * dy) > ROW_CLICK_DRAG_THRESHOLD_PX) return;
+                                      onCellClick(item, index, e);
+                                  }
+                                : undefined
+                        }
                         style={{
                             width: column.width,
                             minWidth: column.width,
+                            ...(column.primary ? { fontSize: 15 } : {}),
                             ...column.style,
-                            padding: "8px 16px",
+                            ...(column.cellStyle ? column.cellStyle(item, index) : {}),
+                            padding: customPadding ? column.cellPadding : "8px 16px",
+                            ...pinnedStyle(column, false),
                         }}
                     >
                         {cellValue}
@@ -1060,7 +1176,7 @@ function VirtualDataTableComponent<T>({
 
             return <>{cells}</>;
         },
-        [columns, perfDebugEnabled],
+        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle],
     );
 
     // 컬럼에 footer 렌더러가 하나라도 있거나 showFooter 가 명시되면 하단 합계 행을 표시한다.
@@ -1098,7 +1214,8 @@ function VirtualDataTableComponent<T>({
                             : { width: col.width, minWidth: col.width }),
                         ...col.style,
                         fontWeight: "bold",
-                        padding: "16px",
+                        // 노션풍은 본문 칸과 같은 좌우 여백 · 세로 0(줄 높이로 가운데) — 16px 이면 합계 줄만 높고 글자가 칸과 어긋났다.
+                        padding: notion ? "0 14px" : "16px",
                     }}
                 >
                     {col.footer ? col.footer(data) : null}
@@ -1110,7 +1227,7 @@ function VirtualDataTableComponent<T>({
         }
 
         return <MuiTableRow>{cells}</MuiTableRow>;
-    }, [hasFooter, columns, data]);
+    }, [hasFooter, columns, data, notion]);
 
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
     const VirtuosoTableComponents: TableComponents<T> = useMemo(
@@ -1123,8 +1240,9 @@ function VirtualDataTableComponent<T>({
                     {...props}
                     sx={{
                         borderCollapse: "separate",
-                        tableLayout: "fixed",
-                        marginRight: "16px",
+                        tableLayout,
+                        // 틀 없이 그릴 때는 오른쪽 덧여백이 가로 넘침(가로 막대)을 만든다 — 표가 상자 폭에 꼭 맞게 둔다.
+                        marginRight: framed ? "16px" : 0,
                         // 하단 합계 행이 있으면 데이터가 적어도 테이블이 컨테이너를 채우게 한다.
                         // (실제 바닥 정렬은 tbody 가 늘어나며 처리 — 행 높이는 그대로 유지)
                         ...(hasFooter ? { height: "100%" } : {}),
@@ -1206,6 +1324,11 @@ function VirtualDataTableComponent<T>({
                                 y: e.clientY,
                             };
                         }}
+                        onContextMenu={(e: React.MouseEvent) => {
+                            if (item && onRowContextMenuRef.current) {
+                                onRowContextMenuRef.current(item, rowIndex, e);
+                            }
+                        }}
                         onClick={(e: React.MouseEvent) => {
                             // mousedown 시작 위치와 click 위치 차이로 드래그 여부 판별
                             const dx =
@@ -1238,15 +1361,23 @@ function VirtualDataTableComponent<T>({
                                 // 흔들리고, 그 위에 sticky 로 붙은 <tfoot> 합계행이 1px 떨린다.
                                 // height/maxHeight 를 정수로 박고 overflow:hidden 으로 막아
                                 // 측정값이 항상 estimatedItemHeight 가 되게 한다.
-                                height: estimatedItemHeight,
-                                maxHeight: estimatedItemHeight,
+                                // 줄 높이 "auto" 는 내용만큼 늘어난다 — 칸 높이(rowHeight)가 최소 높이로 동작한다.
+                                ...(autoRowHeight
+                                    ? { "& > td": { height: estimatedItemHeight } }
+                                    : {
+                                          height: estimatedItemHeight,
+                                          maxHeight: estimatedItemHeight,
+                                      }),
                                 boxSizing: "border-box",
                                 backgroundColor:
                                     isOddRow && stripedRowColor
                                         ? stripedRowColor
                                         : "transparent",
-                                "& td": {
+                                // 여백을 따로 받은 칸(cellPadding · 한 칸 줄)은 기본 여백에서 뺀다.
+                                "& td:not([data-vdt-pad])": {
                                     padding: "8px 16px",
+                                },
+                                "& td": {
                                     boxSizing: "border-box",
                                     borderBottom: rowDivider
                                         ? "1px solid rgba(224, 224, 224, 1)"
@@ -1371,7 +1502,8 @@ function VirtualDataTableComponent<T>({
                                     // 구분선은 실제 border 대신 inset box-shadow 로 그린다.
                                     // collapsed-border 픽셀 경계 공유로 인한 깜빡임을 피한다.
                                     border: "none",
-                                    boxShadow: "inset 0 1px 0 0 #000000",
+                                    // 노션풍은 머리 아래 선과 같은 진한 회색 선 — 검은 선은 옅은 표에서 혼자 튀었다.
+                                    boxShadow: `inset 0 1px 0 0 ${notion ? notionTokens.borderStrong : "#000000"}`,
                                 },
                             },
                             ...(Array.isArray(footerSx)
@@ -1401,12 +1533,24 @@ function VirtualDataTableComponent<T>({
             footerHeight,
             footerSx,
             hasFooter,
+            notion,
+            notionTokens,
             // spacer 행의 colSpan 계산에 사용 (컬럼 구조 변경 시 components 재생성)
             columns,
+            tableLayout,
+            framed,
+            autoRowHeight,
         ],
     );
 
     const resolvedVirtuosoComponents = VirtuosoTableComponents;
+    // autoHeight 는 같은 표 부품(머리 · 줄 · 합계)을 가상화 없이 그대로 쓴다 — 칸 모양이 가상 표와 같다.
+    const autoParts = VirtuosoTableComponents as Record<string, unknown>;
+    const AutoTable = autoParts.Table as React.ComponentType<any>;
+    const AutoTableHead = autoParts.TableHead as React.ComponentType<any>;
+    const AutoTableBody = autoParts.TableBody as React.ComponentType<any>;
+    const AutoTableRow = autoParts.TableRow as React.ComponentType<any>;
+    const AutoTableFoot = autoParts.TableFoot as React.ComponentType<any>;
 
     // 공통 테이블 내용
     const tableContent = (
@@ -1414,7 +1558,7 @@ function VirtualDataTableComponent<T>({
             sx={
                 {
                     position: "relative",
-                    height: "100%",
+                    height: autoHeight ? "auto" : "100%",
                     width: "100%",
                     "& .MuiTableHead-root": {
                         backgroundColor: (theme: Theme) =>
@@ -1424,14 +1568,43 @@ function VirtualDataTableComponent<T>({
                     },
                     // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
                     ...(selectedRowCssSx ?? {}),
+                    // 고정 열 칸은 뒤로 지나가는 칸을 가려야 해 바탕을 칠한다. 줄 호버 색은 줄(tr)에 칠해지므로 고정 칸에도 같은 색을 준다.
+                    "& tbody td[data-vdt-pinned]": {
+                        backgroundColor: notion
+                            ? notionTokens.bg
+                            : muiTheme.palette.background.paper,
+                    },
+                    // 칸 단위로 누르는 칸 — 칸에만 호버 바탕.
+                    "& tbody td[data-vdt-cell-click]": { cursor: "pointer" },
+                    "& tbody td[data-vdt-cell-click]:hover": {
+                        backgroundColor: notion
+                            ? notionTokens.hoverBg
+                            : muiTheme.palette.mode === "dark"
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)",
+                    },
+                    ...(notion && hasRowClick
+                        ? {
+                              "& tbody tr:hover td[data-vdt-pinned]": {
+                                  backgroundColor: notionTokens.hoverBg,
+                              },
+                          }
+                        : {}),
                     // 노션풍 — 머리·칸의 인라인 style(padding·fontWeight)을 덮어야 해서 !important 다.
                     // 셀렉터를 컨테이너에서 내리는 것은 행 컴포넌트를 건드리지 않기 위해서다(행 재렌더 비용).
                     ...(notion
                         ? {
                               // 바깥 테두리 — 업무함 표(border 1px + radius 4px)와 같다. 가상화라 내용 높이에 맞춰 줄이지 못하고
                               // 종이 안쪽 여백 안에서 세로를 꽉 채운다. 머리의 윗선·좌우선은 이 테두리가 대신한다.
-                              border: `1px solid ${notionTokens.borderStrong}`,
-                              borderRadius: "4px",
+                              ...(framed
+                                  ? {
+                                        border: `1px solid ${notionTokens.borderStrong}`,
+                                        borderRadius: "4px",
+                                    }
+                                  : {
+                                        // 틀 없이 — 바깥 상자 바탕이 비치지 않게 표를 종이 색으로 칠한다.
+                                        "& table": { backgroundColor: notionTokens.bg },
+                                    }),
                               overflow: "hidden",
                               "& thead tr th": {
                                   height: columnHeight,
@@ -1447,8 +1620,10 @@ function VirtualDataTableComponent<T>({
                                   borderRight: `1px solid ${notionTokens.border}`,
                                   "&:last-of-type": { borderRight: "none" },
                               },
-                              "& tbody tr td": {
+                              "& tbody tr td:not([data-vdt-pad])": {
                                   padding: "0 14px !important",
+                              },
+                              "& tbody tr td": {
                                   fontSize: 14,
                                   borderBottom: `1px solid ${notionTokens.border}`,
                               },
@@ -1457,30 +1632,66 @@ function VirtualDataTableComponent<T>({
                 } as SxProps<Theme>
             }
         >
-            {/* 테이블 */}
-            <TableVirtuoso
-                key={tableKey}
-                ref={virtuosoRef}
-                data={data}
-                totalCount={onLoadMore ? data.length + 1 : data.length}
-                defaultItemHeight={estimatedItemHeight}
-                fixedItemHeight={estimatedItemHeight}
-                fixedHeaderContent={fixedHeaderContent}
-                fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
-                itemContent={rowContent}
-                endReached={handleEndReached}
-                style={{ height: "100%" }}
-                increaseViewportBy={{
-                    top: viewportBufferTop,
-                    bottom: viewportBufferBottom,
-                }}
-                overscan={virtuosoOverscan}
-                followOutput={false}
-                components={resolvedVirtuosoComponents}
-            />
+            {/* 테이블 — autoHeight 면 가상화 없이 모든 줄을 그리고 높이는 내용을 따른다(페이지가 굴린다). */}
+            {autoHeight ? (
+                <Box sx={{ overflowX: "auto", width: "100%" }}>
+                    <AutoTable>
+                        <AutoTableHead>{fixedHeaderContent()}</AutoTableHead>
+                        <AutoTableBody>
+                            {data.map((item, index) => (
+                                <AutoTableRow
+                                    key={getRowId ? String(getRowId(item, index)) : index}
+                                    item={item}
+                                    data-index={index}
+                                >
+                                    {rowContent(index, item)}
+                                </AutoTableRow>
+                            ))}
+                        </AutoTableBody>
+                        {hasFooter ? <AutoTableFoot>{fixedFooterContent()}</AutoTableFoot> : null}
+                    </AutoTable>
+                </Box>
+            ) : (
+                <TableVirtuoso
+                    key={tableKey}
+                    ref={virtuosoRef}
+                    data={data}
+                    totalCount={onLoadMore ? data.length + 1 : data.length}
+                    defaultItemHeight={estimatedItemHeight}
+                    fixedItemHeight={autoRowHeight ? undefined : estimatedItemHeight}
+                    fixedHeaderContent={fixedHeaderContent}
+                    fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
+                    itemContent={rowContent}
+                    endReached={handleEndReached}
+                    style={{ height: "100%" }}
+                    increaseViewportBy={{
+                        top: viewportBufferTop,
+                        bottom: viewportBufferBottom,
+                    }}
+                    overscan={virtuosoOverscan}
+                    followOutput={false}
+                    components={resolvedVirtuosoComponents}
+                />
+            )}
 
-            {/* 빈 데이터 표시 */}
-            {data.length === 0 && !loading && (
+            {/* 빈 데이터 표시 — 노션풍은 머리 아래에 옅은 글 한 줄(업무함 목록 표의 빈 목록과 같은 모양). */}
+            {data.length === 0 && !loading && notion && typeof emptyMessage === "string" && (
+                <Box
+                    sx={{
+                        position: autoHeight ? "static" : "absolute",
+                        top: columnHeight,
+                        left: 0,
+                        right: 0,
+                        py: 6,
+                        textAlign: "center",
+                        fontSize: 14,
+                        color: notionTokens.emptyColor,
+                    }}
+                >
+                    {emptyMessage}
+                </Box>
+            )}
+            {data.length === 0 && !loading && !(notion && typeof emptyMessage === "string") && (
                 <Box
                     sx={{
                         position: "absolute",
@@ -1559,7 +1770,7 @@ function VirtualDataTableComponent<T>({
     );
 
     // 노션풍은 사방 여백 — 업무함처럼 표가 종이 가장자리에 붙지 않는다(좌우 paddingX, 상하 NOTION_PADDING_Y).
-    const notionFramePadding = notion
+    const notionFramePadding = notion && framed
         ? { paddingRight: paddingX, paddingTop: NOTION_PADDING_Y, paddingBottom: NOTION_PADDING_Y }
         : {};
 
@@ -1572,9 +1783,9 @@ function VirtualDataTableComponent<T>({
                 paddingLeft: paddingX,
                 ...notionFramePadding,
                 boxSizing: "border-box",
-                height: "100%",
+                height: autoHeight ? "auto" : "100%",
                 minHeight: 0,
-                flex: 1,
+                flex: autoHeight ? "none" : 1,
                 display: "flex",
                 flexDirection: "column",
             }}
@@ -1589,9 +1800,9 @@ function VirtualDataTableComponent<T>({
                 paddingLeft: paddingX,
                 ...notionFramePadding,
                 boxSizing: "border-box",
-                height: "100%",
+                height: autoHeight ? "auto" : "100%",
                 minHeight: 0,
-                flex: 1,
+                flex: autoHeight ? "none" : 1,
                 display: "flex",
                 flexDirection: "column",
             }}

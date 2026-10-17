@@ -42,6 +42,32 @@ export interface DataColumn<T> {
     group?: string; // 그룹 헤더명
     footer?: (data: T[]) => React.ReactNode; // 하단 합계(tfoot) 셀 렌더링 함수 (전체 표시 데이터 전달)
     footerColSpan?: number; // 하단 합계 셀이 차지할 컬럼 수 (이만큼 뒤 컬럼의 footer 셀은 생략됨)
+    /**
+     * 가로로 밀어도 왼쪽에 붙어 있는 열. 붙는 자리는 앞쪽 고정 열들의 width 합이라 고정 열은 width 를 숫자(px)로 준다.
+     * 여러 앞 열(지원사업 · 대상자 …)을 함께 세워 두는 넓은 표에서 쓴다.
+     */
+    pinned?: "left";
+    /** 머리 칸(th)에 그대로 얹을 속성 — 끌어서 열 순서 바꾸기(draggable · onDrop …)나 title 같은 것. style 은 기본 머리 모양 위에 덮인다. */
+    headerProps?: Omit<React.ThHTMLAttributes<HTMLTableCellElement>, "align">;
+    /** 본문 칸의 줄마다 다른 스타일(완료 줄 흐리게 · 칸 바탕 등). column.style 위에 덮인다. */
+    cellStyle?: (item: T, index: number) => React.CSSProperties;
+    /**
+     * 본문 칸 안쪽 여백. 주면 기본(variant 별) 여백 대신 이 값을 쓴다 — 칸 안에 단추를 꽉 채워 넣는 열(회차 칸 등)처럼
+     * 여백을 따로 줘야 하는 열에 쓴다.
+     */
+    cellPadding?: string | number;
+    /** 줄의 대표 칸(이름 · 제목) — 본문 글자를 15px 로 키운다. 화면마다 첫 칸에 fontSize 15 를 적던 것을 대신한다. */
+    primary?: boolean;
+    /**
+     * 칸 하나를 누르는 표(근태 주간 · 예약 아젠다 — 칸마다 다른 날 · 사람). 주면 그 칸에 호버 바탕이 생기고, 누르면 이 함수만 불린다
+     * (줄의 onRowClick 은 불리지 않는다).
+     */
+    onCellClick?: (item: T, index: number, event: React.MouseEvent) => void;
+    /**
+     * 칸을 아래 줄까지 합친다 — 그 줄에서 합칠 줄 수를 돌려주고, 위 칸에 덮인 줄에서는 0 을 돌려준다(칸을 그리지 않는다).
+     * 가상화로 보이는 줄만 그리면 덮은 칸이 사라질 수 있어 autoHeight 표 · 줄이 적은 표에서만 쓴다.
+     */
+    rowSpan?: (item: T, index: number) => number;
 }
 
 /** 정렬 방향 타입 */
@@ -114,4 +140,33 @@ export interface VirtualDataTableProps<T> {
      * 기본값 "default" 는 종전 모양 그대로다. columnHeight·paddingX·rowHoverColor 를 따로 주면 그 값이 이긴다.
      */
     variant?: "default" | "notion";
+    /**
+     * 노션풍 바깥 틀(1px 테두리 · 4px 모서리 · 종이 사방 여백)을 그린다(기본 true). 이미 테두리를 두른 상자 안에 표를 꽉 채워 넣을 때 false —
+     * 테두리 · 여백 없이 표만 그리고 표 바탕을 종이 색으로 칠한다.
+     */
+    framed?: boolean;
+    /**
+     * 줄 높이 방식. "fixed"(기본)는 모든 줄을 rowHeight 로 박는다(합계 줄 떨림 방지). "auto" 는 rowHeight 를 최소 높이로 두고
+     * 내용(여러 줄 글 · 칸 안 단추 두 줄)만큼 늘어난다.
+     */
+    rowHeightMode?: "fixed" | "auto";
+    /**
+     * 열 폭 방식. "fixed"(기본)는 column.width 대로, "auto" 는 내용에 맞춰 열 폭이 정해지고 표가 틀보다 넓어지면 가로로 민다.
+     * 열 수가 데이터마다 달라지는 표(피벗 · 월별 표)에서 쓴다. 가상화로 보이는 줄만 그리므로 줄이 아주 많은 표에는 맞지 않는다.
+     */
+    tableLayout?: "fixed" | "auto";
+    /**
+     * 이 줄을 칸 나눔 없이 한 칸(모든 열 병합)으로 그린다 — 묶음 머리 줄(업체 이름 · 소계)처럼. null/undefined 를 돌려주면 보통 줄이다.
+     * 누르면 onRowClick 이 같은 item 으로 불린다(접기 · 펴기는 소비처가).
+     */
+    renderFullWidthRow?: (item: T, index: number) => React.ReactNode | null | undefined;
+    /** renderFullWidthRow 줄의 칸(td) 스타일 — 바탕색 · 여백. */
+    fullWidthRowSx?: SxProps<Theme>;
+    /**
+     * 표 자체 스크롤 없이 내용 높이만큼 그린다(가상화 없음) — 페이지에 얹어 페이지가 굴리는 표(근태 표 등).
+     * 머리 줄은 페이지 기준으로 붙지 않는다(가로로 넘치면 표 상자가 옆으로 민다). onLoadMore 는 쓰지 않는다.
+     */
+    autoHeight?: boolean;
+    /** 줄 우클릭 — 끌어서 민 뒤가 아니면 부른다. */
+    onRowContextMenu?: (item: T, index: number, event: React.MouseEvent) => void;
 }
