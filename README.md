@@ -153,6 +153,7 @@ function App() {
     onEndReached={() => void}               // Fired every time the end is reached (no minimum / no same-length latch)
     colorMode={"light" | "dark"}            // notion colors independent of the MUI palette mode
     mobile={boolean | { query?, renderRow? }} // 1.6.0 card list on narrow screens (see "Mobile list")
+    scrollParent={HTMLElement | null}         // 1.7.0 virtualize against an outer (page) scroller
 
     // Optional - 1.4.0 header context menu (right-click on th never shows the browser menu)
     onSortClear={() => void}                // adds "정렬 풀기" to the header menu (and re-picking the active direction clears)
@@ -235,6 +236,12 @@ Pinned rows example (1.3.0):
 
 notion defaults (1.2.0): rowHeight 48, header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
 string `emptyMessage` = one light grey line under the header, footer cells use the body padding.
+
+### Page scroll (1.7.0)
+
+`scrollParent={element}` virtualizes against an outer scroller (react-virtuoso `customScrollParent`) — the table has no scroller of its own
+and grows with the page, so things bound to the page scroller (collapsing app bar, scroll-to-top, pull-to-refresh) keep working.
+Pass `null` while the element is not known yet (nothing is drawn until then). Works with `mobile` and `onEndReached`.
 
 ### Mobile list (1.6.0)
 

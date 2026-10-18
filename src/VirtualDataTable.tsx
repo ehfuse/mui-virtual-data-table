@@ -97,6 +97,10 @@ const NOTION_DARK = {
     selectedBar: "#60a5fa",
 };
 
+/** 바깥 스크롤일 때의 스크롤 상자 자리 — 굴리지 않는 평범한 상자(1.7.0) */
+const PlainScroller = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((props, ref) => <div {...props} ref={ref} />);
+PlainScroller.displayName = "VdtPlainScroller";
+
 /** 폰 목록으로 바꾸는 기본 폭 — MUI sm(600) 미만 */
 const DEFAULT_MOBILE_QUERY = "(max-width:599.95px)";
 
@@ -154,6 +158,7 @@ function VirtualDataTableComponent<T>({
     onEndReached,
     colorMode,
     mobile,
+    scrollParent,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
@@ -170,6 +175,10 @@ function VirtualDataTableComponent<T>({
     const mobileConfig = mobile === true ? {} : mobile || null;
     const mobileMatch = useMediaQuery(mobileConfig?.query ?? DEFAULT_MOBILE_QUERY, { noSsr: true });
     const mobileList = Boolean(mobileConfig) && mobileMatch;
+    // 바깥 스크롤(1.7.0) — 페이지가 굴리고 표는 그 스크롤에 맞춰 보이는 줄만 그린다(높이는 내용만큼)
+    const external = Boolean(scrollParent);
+    // 높이를 내용에 맡기는가 — autoHeight(가상화 없음) · 바깥 스크롤(가상화 있음)
+    const sizeAuto = autoHeight || external;
     // 카드 줄은 내용만큼 높아진다(rowHeight 는 최소 높이)
     const autoRowHeight = rowHeightMode === "auto" || mobileList;
     // 호버는 단색(불투명) — 기본 모양의 반투명 검정은 흰 종이 위에서 회색이 아니라 탁한 색으로 보인다.
@@ -1527,7 +1536,8 @@ function VirtualDataTableComponent<T>({
     const VirtuosoTableComponents: TableComponents<T> = useMemo(
         () => ({
             // 스크롤 컨테이너 (외부에서 한 번만 생성된 안정적인 컴포넌트 사용)
-            Scroller: VirtuosoScroller,
+            // 바깥 스크롤이면 자기 스크롤 상자(OverlayScrollbar) 없이 평범한 상자 — 굴리는 것은 바깥이다
+            Scroller: external ? PlainScroller : VirtuosoScroller,
             // 테이블 컴포넌트
             Table: (props) => (
                 <Table
@@ -1839,6 +1849,7 @@ function VirtualDataTableComponent<T>({
             autoRowHeight,
             tableMinWidth,
             mobileList,
+            external,
         ],
     );
     rowComponentRef.current = (VirtuosoTableComponents as Record<string, unknown>).TableRow as React.ComponentType<any>;
@@ -1901,7 +1912,7 @@ function VirtualDataTableComponent<T>({
             sx={
                 {
                     position: "relative",
-                    height: autoHeight ? "auto" : "100%",
+                    height: sizeAuto ? "auto" : "100%",
                     width: "100%",
                     "& .MuiTableHead-root": {
                         backgroundColor: (theme: Theme) =>
@@ -1987,7 +1998,7 @@ function VirtualDataTableComponent<T>({
                               // 마지막 줄 아래선 — 틀 바닥(또는 합계 줄의 윗선)과 맞닿으면 긋지 않는다. 두 선이 겹쳐 굵은 이중선으로 보였다(2026-10-17).
                               // 맞닿는 경우: 내용 높이만큼 서는 표(autoHeight), 줄이 영역보다 길어 끝까지 내리면 바닥에 닿는 표, 합계 줄이 있는 표.
                               // 줄이 적어 아래가 비는 표는 그대로 긋는다 — 줄이 어디서 끝나는지 보여야 한다.
-                              ...(data.length > 0 && (autoHeight || listOverflows || hasFooter)
+                              ...(data.length > 0 && (sizeAuto || listOverflows || hasFooter)
                                   ? { [`& tbody tr[data-index="${data.length - 1}"]:not([data-vdt-pinned-row]) td`]: { borderBottom: "none" } }
                                   : {}),
                           }
@@ -2014,7 +2025,7 @@ function VirtualDataTableComponent<T>({
                         {hasFooter && !mobileList ? <AutoTableFoot>{fixedFooterContent()}</AutoTableFoot> : null}
                     </AutoTable>
                 </Box>
-            ) : (
+            ) : scrollParent === null ? null : ( // 바깥 스크롤 요소를 아직 못 얻었으면 기다린다
                 <TableVirtuoso
                     key={tableKey}
                     ref={virtuosoRef}
@@ -2037,7 +2048,9 @@ function VirtualDataTableComponent<T>({
                         checkListOverflow();
                     }}
                     totalListHeightChanged={checkListOverflow}
-                    style={{ height: "100%" }}
+                    style={external ? undefined : { height: "100%" }}
+                    // 바깥 스크롤(1.7.0) — 앱 셸처럼 페이지가 굴리는 화면(머리 접기 · 맨 위로 · 당겨서 새로고침은 바깥 것이 그대로 한다)
+                    {...(external ? { customScrollParent: scrollParent as HTMLElement } : {})}
                     increaseViewportBy={{
                         top: viewportBufferTop,
                         bottom: viewportBufferBottom,
@@ -2052,7 +2065,7 @@ function VirtualDataTableComponent<T>({
             {data.length === 0 && !loading && !hasPinnedRows && notion && typeof emptyMessage === "string" && (
                 <Box
                     sx={{
-                        position: autoHeight ? "static" : "absolute",
+                        position: sizeAuto ? "static" : "absolute",
                         top: mobileList ? 0 : columnHeight,
                         left: 0,
                         right: 0,
@@ -2169,9 +2182,9 @@ function VirtualDataTableComponent<T>({
                 paddingLeft: paddingX,
                 ...notionFramePadding,
                 boxSizing: "border-box",
-                height: autoHeight ? "auto" : "100%",
+                height: sizeAuto ? "auto" : "100%",
                 minHeight: 0,
-                flex: autoHeight ? "none" : 1,
+                flex: sizeAuto ? "none" : 1,
                 display: "flex",
                 flexDirection: "column",
             }}
@@ -2186,9 +2199,9 @@ function VirtualDataTableComponent<T>({
                 paddingLeft: paddingX,
                 ...notionFramePadding,
                 boxSizing: "border-box",
-                height: autoHeight ? "auto" : "100%",
+                height: sizeAuto ? "auto" : "100%",
                 minHeight: 0,
-                flex: autoHeight ? "none" : 1,
+                flex: sizeAuto ? "none" : 1,
                 display: "flex",
                 flexDirection: "column",
             }}

@@ -268,4 +268,10 @@ export interface VirtualDataTableProps<T> {
      * 머리(정렬 · 거르기) · 합계 줄 · 고정 줄은 폰 목록에서 그리지 않는다. true 면 기본 설정.
      */
     mobile?: boolean | VDTMobileConfig<T>;
+    /**
+     * 바깥 스크롤 상자(1.7.0) — 주면 표는 자기 스크롤 없이 내용 높이로 서고, 이 요소의 스크롤에 맞춰 보이는 줄만 그린다
+     * (react-virtuoso customScrollParent). 페이지 전체가 굴러가는 화면(앱 셸 · 머리 접기 · 맨 위로 FAB)에 목록을 얹을 때 쓴다.
+     * null 이면(아직 요소를 못 얻음) 그리지 않고 기다린다.
+     */
+    scrollParent?: HTMLElement | null;
 }
