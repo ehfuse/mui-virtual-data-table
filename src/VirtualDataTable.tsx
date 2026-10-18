@@ -43,10 +43,6 @@ import {
     TableFooter as MuiTableFooter,
     TableRow as MuiTableRow,
     TableSortLabel,
-    Menu,
-    MenuItem,
-    Divider,
-    SvgIcon,
     Paper,
     Typography,
     useTheme,
@@ -57,6 +53,7 @@ import { TableVirtuoso } from "react-virtuoso";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 import { CssSpinner } from "./CssSpinner";
+import { HeaderMenu, HEADER_MENU_ICON_PATHS, HeaderMenuIcon } from "./HeaderMenu";
 
 import OverlayScrollbar from "@ehfuse/overlay-scrollbar";
 import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
@@ -98,24 +95,6 @@ const NOTION_DARK = {
     selectedBg: "rgba(59, 130, 246, 0.22)",
     selectedBar: "#60a5fa",
 };
-
-/** 머리 우클릭 메뉴의 아이콘(Material 아이콘 경로) — @mui/icons-material 을 의존성으로 들이지 않으려고 경로만 옮겨 둔다. */
-const ICON_PATHS = {
-    asc: "M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z",
-    desc: "M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z",
-    checked: "M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
-    unchecked: "M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z",
-    check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
-    filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
-};
-
-function PathIcon({ d, size = 18, color }: { d: string; size?: number; color?: string }) {
-    return (
-        <SvgIcon sx={{ fontSize: size, flexShrink: 0, color }}>
-            <path d={d} />
-        </SvgIcon>
-    );
-}
 
 /** 이 열이 머리 메뉴에 거르기 목록을 갖는지 — 값 목록과 바뀜 알림이 둘 다 있어야 한다. */
 function hasColumnFilter<T>(col: DataColumn<T>): boolean {
@@ -714,7 +693,7 @@ function VirtualDataTableComponent<T>({
                     <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {col.text}
                     </Box>
-                    <PathIcon d={ICON_PATHS.filter} size={16} />
+                    <HeaderMenuIcon d={HEADER_MENU_ICON_PATHS.filter} size={16} />
                 </Box>
             );
         },
@@ -875,6 +854,8 @@ function VirtualDataTableComponent<T>({
                         <TableCell
                             key={String(col.id)}
                             align={col.align || "left"}
+                            // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
+                            title={typeof col.text === "string" ? col.text : undefined}
                             {...col.headerProps}
                             onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                             style={{
@@ -980,6 +961,8 @@ function VirtualDataTableComponent<T>({
                     key={String(col.id)}
                     rowSpan={2}
                     align={col.align || "left"}
+                    // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
+                    title={typeof col.text === "string" ? col.text : undefined}
                     {...col.headerProps}
                     onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                     style={{
@@ -1101,6 +1084,8 @@ function VirtualDataTableComponent<T>({
                     <TableCell
                         key={String(col.id)}
                         align={col.align || "left"}
+                        // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
+                        title={typeof col.text === "string" ? col.text : undefined}
                         {...col.headerProps}
                         onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                         style={{
@@ -1785,105 +1770,37 @@ function VirtualDataTableComponent<T>({
         const canSort = Boolean((menuColumn.sortMenu ?? menuColumn.sortable) && onSort);
         const canFilter = hasColumnFilter(menuColumn);
         const activeSort = sortBy === colId ? sortDirection : undefined;
-        const picked = menuColumn.filterValues ?? [];
-        const multiple = menuColumn.filterMultiple !== false;
-        // 14px 항목 — 앱의 머리 메뉴(HeadSortFilter)와 같은 크기 · 아이콘 18px.
-        const itemSx = { gap: 1, fontSize: 14, minHeight: 36 };
-        // 정렬은 한 번 고르면 끝이라 닫는다. 같은 방향을 다시 고르면 풀기(onSortClear 가 있을 때).
-        const pickSort = (direction: SortDirection) => {
-            closeHeaderMenu();
-            if (activeSort === direction) {
-                onSortClear?.();
-                return;
-            }
-            onSort?.(colId, direction);
-        };
-        // 여러 값 고르기는 연달아 고르므로 열어 둔다. 하나만 고르는 열은 고르면 닫는다.
-        const toggleValue = (value: string) => {
-            const on = picked.includes(value);
-            if (multiple) {
-                menuColumn.onFilterChange?.(on ? picked.filter((item) => item !== value) : [...picked, value]);
-                return;
-            }
-            closeHeaderMenu();
-            menuColumn.onFilterChange?.(on ? [] : [value]);
-        };
-        const items: React.ReactNode[] = [];
-        if (canSort) {
-            items.push(
-                <MenuItem key="asc" selected={activeSort === "asc"} onClick={() => pickSort("asc")} sx={itemSx}>
-                    <PathIcon d={ICON_PATHS.asc} color="text.secondary" />
-                    오름차순 정렬
-                </MenuItem>,
-                <MenuItem key="desc" selected={activeSort === "desc"} onClick={() => pickSort("desc")} sx={itemSx}>
-                    <PathIcon d={ICON_PATHS.desc} color="text.secondary" />
-                    내림차순 정렬
-                </MenuItem>,
-            );
-            if (activeSort && onSortClear) {
-                items.push(
-                    <MenuItem
-                        key="sort-clear"
-                        onClick={() => {
-                            closeHeaderMenu();
-                            onSortClear();
-                        }}
-                        sx={{ ...itemSx, color: "text.secondary" }}
-                    >
-                        정렬 풀기
-                    </MenuItem>,
-                );
-            }
-        }
-        if (canSort && canFilter) items.push(<Divider key="div-sort" />);
-        if (canFilter) {
-            (menuColumn.filterOptions ?? []).forEach((option) => {
-                const on = picked.includes(option.value);
-                items.push(
-                    <MenuItem key={`f:${option.value}`} selected={!multiple && on} onClick={() => toggleValue(option.value)} sx={itemSx}>
-                        {multiple ? (
-                            <PathIcon d={on ? ICON_PATHS.checked : ICON_PATHS.unchecked} color={on ? "primary.main" : "text.disabled"} />
-                        ) : (
-                            // 하나만 고르는 열 — 고른 값에만 체크, 나머지는 같은 폭을 비워 글자 줄을 맞춘다.
-                            <Box component="span" sx={{ display: "inline-flex", width: 18, flexShrink: 0, color: "primary.main" }}>
-                                {on ? <PathIcon d={ICON_PATHS.check} /> : null}
-                            </Box>
-                        )}
-                        {option.label}
-                    </MenuItem>,
-                );
-            });
-            // 걸려 있을 때만 — 하나씩 끄지 않고 한 번에 푼다.
-            if (picked.length > 0) {
-                items.push(
-                    <Divider key="div-filter" />,
-                    <MenuItem
-                        key="filter-clear"
-                        onClick={() => {
-                            closeHeaderMenu();
-                            menuColumn.onFilterChange?.([]);
-                        }}
-                        sx={{ ...itemSx, color: "text.secondary" }}
-                    >
-                        거르기 풀기
-                    </MenuItem>,
-                );
-            }
-        }
+        // 메뉴 모양은 공용 HeaderMenu 한 벌이다(1.5.0) — 화면이 직접 띄우는 머리 메뉴와 같은 크기 · 체크 모양.
         headerMenuNode = (
-            // 누른 자리에서 바로 뜬다 — 펼침 애니메이션은 메뉴가 늦게 따라오는 것처럼 보인다(우클릭 메뉴 공통 규칙).
-            <Menu
+            <HeaderMenu
                 open
-                anchorReference="anchorPosition"
                 anchorPosition={{ left: headerMenu.x, top: headerMenu.y }}
                 onClose={closeHeaderMenu}
-                transitionDuration={0}
-                // 메뉴 위에서 다시 우클릭해도 브라우저 메뉴가 뜨지 않게.
-                onContextMenu={(event) => event.preventDefault()}
-                slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 180 } } }}
-            >
-                {items}
-            </Menu>
+                sort={
+                    canSort
+                        ? {
+                              active: activeSort ?? null,
+                              clearable: Boolean(onSortClear),
+                              onChange: (direction) => {
+                                  if (direction) onSort?.(colId, direction);
+                                  else onSortClear?.();
+                              },
+                          }
+                        : undefined
+                }
+                filter={
+                    canFilter
+                        ? {
+                              options: menuColumn.filterOptions ?? [],
+                              value: menuColumn.filterValues ?? [],
+                              onChange: (values) => menuColumn.onFilterChange?.(values),
+                              multiple: menuColumn.filterMultiple !== false,
+                              emptyLabel: menuColumn.filterEmptyLabel,
+                              searchable: menuColumn.filterSearchable,
+                          }
+                        : undefined
+                }
+            />
         );
     }
 
@@ -1946,6 +1863,10 @@ function VirtualDataTableComponent<T>({
                               // 머리 칸 안의 인라인 상자(아이콘 + 글자를 묶은 inline-flex 머리 · 머리글 필터 단추)는 기준선에 서서 아래에
                               // 글자 내림 자리가 남아 글자가 1~3px 위로 떠 보였다(1.4.3) — 칸 가운데에 세운다.
                               "& thead tr th > *": { verticalAlign: "middle" },
+                              // 머리 칸은 한 줄(1.5.0) — 칸 폭보다 긴 머리글 · 아이콘이 두 줄로 꺾여 머리 줄이 높아졌다(조직 칸이 많은 계약 목록).
+                              // 넘치면 말줄임, 전체 이름은 title(글자 머리) 툴팁으로 본다. 높이는 columnHeight 그대로다.
+                              "& thead > tr > th": { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+                              "& thead > tr > th > *": { maxWidth: "100%" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",

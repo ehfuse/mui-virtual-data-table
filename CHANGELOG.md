@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0
+
+### Added
+
+- **머리 메뉴 공용 부품 `HeaderMenu`** — 정렬(오름 · 내림 · 풀기) · 값 거르기(여러 개 체크 / 하나 라디오 · "비어 있음" · 값이 많으면 찾기 칸 · 거르기 풀기)를
+  필요한 것만 그립니다. 화면이 직접 띄우는 머리 메뉴(머리글 단추 · 도구 줄 단추)도 같은 모양을 쓰게 export 합니다 —
+  `HeaderMenuItem` · `HeaderMenuDivider` · `HeaderMenuIcon` · `headerMenuAnchor(요소)` · 크기 상수(`HEADER_MENU_FONT_SIZE` 14 · `HEADER_MENU_ICON_SIZE` 18 · `HEADER_MENU_ITEM_HEIGHT` 34 · `HEADER_MENU_ITEM_SX`).
+  고를 값은 `icon`(색 점 · 아바타) · `render`(색 칩) · `count` 를 받습니다.
+- 표의 내장 머리 메뉴도 `HeaderMenu` 로 그립니다(모양 통일). 열 옵션 `filterEmptyLabel` · `filterSearchable`, `filterOptions` 는 `HeaderMenuOption[]`.
+
+### Changed
+
+- 노션풍 머리 칸은 한 줄입니다 — 칸 폭보다 긴 머리글이 두 줄로 꺾여 머리 줄이 높아지던 것을 말줄임으로. 글자 머리는 `title` 툴팁으로 전체 이름을 보입니다.
+- 하나만 고르는 거르기(`filterMultiple: false`)는 라디오 표시입니다(체크 표시 → 라디오).
+
 ## 1.4.3
 
 ### Fixed

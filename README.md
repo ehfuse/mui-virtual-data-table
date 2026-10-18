@@ -192,6 +192,30 @@ Header context menu (1.4.0) — right-click a header cell:
 <VirtualDataTable onHeaderContextMenu={(col, e) => (col.id === "owner" ? (openOwnerMenu(e), true) : false)} … />
 ```
 
+Shared header menu (1.5.0) — open it yourself from a custom header button / toolbar button:
+
+```tsx
+import { HeaderMenu, headerMenuAnchor } from "@ehfuse/mui-virtual-data-table";
+
+const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+<button onClick={(e) => setPos(headerMenuAnchor(e.currentTarget))}>상태</button>
+<HeaderMenu
+    open={Boolean(pos)}
+    anchorPosition={pos}
+    onClose={() => setPos(null)}
+    sort={{ active: sortDir, onChange: (d) => setSortDir(d) }}           // null = 풀기
+    filter={{
+        options: [{ value: "open", label: "진행", icon: <Dot color="green" /> }],
+        value: picked, onChange: setPicked,
+        multiple: true,                 // false = radio (closes on pick), allLabel: "전체"
+        emptyLabel: "비어 있음",        // adds value ""
+        searchable: undefined,          // default: > 10 options
+    }}
+>
+    {/* extra items */}
+</HeaderMenu>
+```
+
 Pinned rows example (1.3.0):
 
 ```tsx

@@ -27,6 +27,7 @@
 import React from "react";
 import type { SxProps, Theme } from "@mui/material";
 import { OverlayScrollbarProps } from "@ehfuse/overlay-scrollbar";
+import type { HeaderMenuOption } from "./HeaderMenu";
 
 /**
  * 테이블 컬럼 정의 인터페이스
@@ -82,7 +83,11 @@ export interface DataColumn<T> {
      * 머리 우클릭 메뉴의 거르기 값 목록(1.4.0). onFilterChange 와 함께 주면 머리를 우클릭했을 때 이 값들이 고르기 목록으로 뜬다.
      * 값은 글자다(빈 글자 = 비어 있음 같은 값도 그대로 쓴다). 거르는 일 자체는 소비처가 한다 — 표는 고른 값만 알린다.
      */
-    filterOptions?: { value: string; label: string }[];
+    filterOptions?: HeaderMenuOption[];
+    /** 값 ""(비어 있음) 항목을 끝에 더한다 — 그 이름(1.5.0, 예: "지역 없음"). */
+    filterEmptyLabel?: string;
+    /** 맨 위 찾기 칸(1.5.0) — 기본: 값이 10개를 넘으면. */
+    filterSearchable?: boolean;
     /** 지금 걸린 거르기 값(1.4.0). 하나라도 있으면 머리글이 강조색 + 거르기 아이콘으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */
     filterValues?: string[];
     /** 거르기 값이 바뀔 때(1.4.0) — 다 풀면 빈 배열. */
