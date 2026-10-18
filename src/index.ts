@@ -33,4 +33,6 @@ export type {
     SortDirection,
     SortableFilter,
     VirtualDataTableProps,
+    VDTMobileConfig,
+    VDTMobileSlot,
 } from "./types";

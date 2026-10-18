@@ -46,6 +46,7 @@ import {
     Paper,
     Typography,
     useTheme,
+    useMediaQuery,
     type SxProps,
     type Theme,
 } from "@mui/material";
@@ -95,6 +96,9 @@ const NOTION_DARK = {
     selectedBg: "rgba(59, 130, 246, 0.22)",
     selectedBar: "#60a5fa",
 };
+
+/** 폰 목록으로 바꾸는 기본 폭 — MUI sm(600) 미만 */
+const DEFAULT_MOBILE_QUERY = "(max-width:599.95px)";
 
 /** 이 열이 머리 메뉴에 거르기 목록을 갖는지 — 값 목록과 바뀜 알림이 둘 다 있어야 한다. */
 function hasColumnFilter<T>(col: DataColumn<T>): boolean {
@@ -149,6 +153,7 @@ function VirtualDataTableComponent<T>({
     rowKeyFromId = false,
     onEndReached,
     colorMode,
+    mobile,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
@@ -161,7 +166,12 @@ function VirtualDataTableComponent<T>({
     const rowHeight = rowHeightProp ?? (notion ? 48 : 50);
     // 틀 없이(framed=false) 그릴 때는 바깥 상자가 이미 테두리를 둘렀다 — 좌우 여백 없이 표가 상자에 꽉 찬다.
     const paddingX = framed ? (paddingXProp ?? (notion ? "12px" : "1rem")) : 0;
-    const autoRowHeight = rowHeightMode === "auto";
+    // 폰 목록(1.6.0) — 켠 표만, 화면이 좁을 때만 카드 줄로 그린다
+    const mobileConfig = mobile === true ? {} : mobile || null;
+    const mobileMatch = useMediaQuery(mobileConfig?.query ?? DEFAULT_MOBILE_QUERY, { noSsr: true });
+    const mobileList = Boolean(mobileConfig) && mobileMatch;
+    // 카드 줄은 내용만큼 높아진다(rowHeight 는 최소 높이)
+    const autoRowHeight = rowHeightMode === "auto" || mobileList;
     // 호버는 단색(불투명) — 기본 모양의 반투명 검정은 흰 종이 위에서 회색이 아니라 탁한 색으로 보인다.
     const rowHoverColor = rowHoverColorProp ?? (notion ? notionTokens.hoverBg : undefined);
     const rowHoverOpacity = rowHoverOpacityProp ?? (notion ? 1 : undefined);
@@ -1199,6 +1209,72 @@ function VirtualDataTableComponent<T>({
      * 테이블 행 컨텐츠 렌더링 함수 (기존 VirtualDataTable 스타일)
      * 각 데이터 항목에 대한 셀 내용을 정의
      */
+    /** 폰 목록의 열 자리 — 열의 mobile 힌트로 나눈다(없으면 첫 열은 제목, 나머지는 정보 줄) */
+    const mobileSlots = useMemo(() => {
+        const shown = columns.filter((c) => c.mobile !== false);
+        const title = shown.find((c) => c.mobile === "title") ?? shown.find((c) => !c.mobile);
+        return {
+            title,
+            thumb: shown.filter((c) => c.mobile === "thumb"),
+            badge: shown.filter((c) => c.mobile === "badge"),
+            sub: shown.filter((c) => c.mobile === "sub"),
+            meta: shown.filter((c) => c !== title && (!c.mobile || c.mobile === "meta")),
+        };
+    }, [columns]);
+
+    /** 폰 목록 카드 한 줄 — [사진] [제목 · 칩 / 아래 한 줄 / 머리글 값 묶음] */
+    const renderMobileRow = useCallback(
+        (item: T, index: number): React.ReactNode => {
+            if (mobileConfig?.renderRow) return mobileConfig.renderRow(item, index);
+            const cell = (c: DataColumn<T>) => (c.render ? c.render(item, index) : String((item as any)[c.id] ?? ""));
+            const { title, thumb, badge, sub, meta } = mobileSlots;
+            return (
+                <Box sx={{ display: "flex", gap: "12px", alignItems: "flex-start", py: "12px", px: "14px", minWidth: 0 }}>
+                    {thumb.map((c) => (
+                        <Box key={String(c.id)} sx={{ flexShrink: 0 }}>
+                            {cell(c)}
+                        </Box>
+                    ))}
+                    <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {(title || badge.length > 0) && (
+                            <Box sx={{ display: "flex", alignItems: "flex-start", gap: "8px", minWidth: 0 }}>
+                                <Box sx={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, overflowWrap: "anywhere" }}>
+                                    {title ? cell(title) : null}
+                                </Box>
+                                {badge.map((c) => (
+                                    <Box key={String(c.id)} sx={{ flexShrink: 0 }}>
+                                        {cell(c)}
+                                    </Box>
+                                ))}
+                            </Box>
+                        )}
+                        {sub.map((c) => (
+                            <Box key={String(c.id)} sx={{ fontSize: 13, color: notionTokens.headerColor, minWidth: 0 }}>
+                                {cell(c)}
+                            </Box>
+                        ))}
+                        {meta.length > 0 && (
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, minWidth: 0 }}>
+                                {meta.map((c) => {
+                                    const label = c.mobileLabel === false ? null : (c.mobileLabel ?? (typeof c.text === "string" ? c.text : null));
+                                    return (
+                                        <Box key={String(c.id)} sx={{ display: "inline-flex", alignItems: "center", gap: "4px", minWidth: 0, maxWidth: "100%" }}>
+                                            {label ? <Box component="span" sx={{ color: notionTokens.headerColor, flexShrink: 0 }}>{label}</Box> : null}
+                                            <Box component="span" sx={{ minWidth: 0, "& > *": { width: "auto !important", textAlign: "left !important" } }}>
+                                                {cell(c)}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+                        )}
+                    </Box>
+                </Box>
+            );
+        },
+        [mobileConfig, mobileSlots, notionTokens],
+    );
+
     const rowContent = useCallback(
         (index: number, item: T) => {
             const rowStart = perfDebugEnabled ? performance.now() : 0;
@@ -1215,6 +1291,15 @@ function VirtualDataTableComponent<T>({
                     );
                 }
                 return null;
+            }
+
+            // 폰 목록 — 모든 열을 합친 칸 하나에 카드(머리 줄이 없어 열 폭은 의미가 없다)
+            if (mobileList) {
+                return (
+                    <TableCell colSpan={columns.length} data-vdt-pad="" sx={{ padding: 0 }}>
+                        {renderMobileRow(item, index)}
+                    </TableCell>
+                );
             }
 
             // 한 칸 줄(묶음 머리 등) — 모든 열을 합친 칸 하나. 여백 · 바탕은 fullWidthRowSx 가 정한다.
@@ -1320,7 +1405,7 @@ function VirtualDataTableComponent<T>({
 
             return <>{cells}</>;
         },
-        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle],
+        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow],
     );
 
     /**
@@ -1450,7 +1535,8 @@ function VirtualDataTableComponent<T>({
                     sx={{
                         borderCollapse: "separate",
                         tableLayout,
-                        ...(tableMinWidth ? { minWidth: tableMinWidth } : {}),
+                        // 폰 목록은 칸 하나라 열 폭 합(최소 폭)을 두지 않는다 — 두면 화면 밖으로 밀린다
+                        ...(tableMinWidth && !mobileList ? { minWidth: tableMinWidth } : {}),
                         // 틀 없이 그릴 때는 오른쪽 덧여백이 가로 넘침(가로 막대)을 만든다 — 표가 상자 폭에 꼭 맞게 둔다.
                         marginRight: framed ? "16px" : 0,
                         // 하단 합계 행이 있으면 데이터가 적어도 테이블이 컨테이너를 채우게 한다.
@@ -1752,6 +1838,7 @@ function VirtualDataTableComponent<T>({
             framed,
             autoRowHeight,
             tableMinWidth,
+            mobileList,
         ],
     );
     rowComponentRef.current = (VirtuosoTableComponents as Record<string, unknown>).TableRow as React.ComponentType<any>;
@@ -1912,7 +1999,7 @@ function VirtualDataTableComponent<T>({
             {autoHeight ? (
                 <Box sx={{ overflowX: "auto", width: "100%" }}>
                     <AutoTable>
-                        <AutoTableHead>{fixedHeaderContent()}</AutoTableHead>
+                        {mobileList ? null : <AutoTableHead>{fixedHeaderContent()}</AutoTableHead>}
                         <AutoTableBody>
                             {data.map((item, index) => (
                                 <AutoTableRow
@@ -1924,7 +2011,7 @@ function VirtualDataTableComponent<T>({
                                 </AutoTableRow>
                             ))}
                         </AutoTableBody>
-                        {hasFooter ? <AutoTableFoot>{fixedFooterContent()}</AutoTableFoot> : null}
+                        {hasFooter && !mobileList ? <AutoTableFoot>{fixedFooterContent()}</AutoTableFoot> : null}
                     </AutoTable>
                 </Box>
             ) : (
@@ -1935,8 +2022,9 @@ function VirtualDataTableComponent<T>({
                     totalCount={onLoadMore ? data.length + 1 : data.length}
                     defaultItemHeight={estimatedItemHeight}
                     fixedItemHeight={autoRowHeight ? undefined : estimatedItemHeight}
-                    fixedHeaderContent={fixedHeaderContent}
-                    fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
+                    // 폰 목록은 머리 줄 · 합계 줄 없이 카드만
+                    fixedHeaderContent={mobileList ? undefined : fixedHeaderContent}
+                    fixedFooterContent={hasFooter && !mobileList ? fixedFooterContent : undefined}
                     itemContent={rowContent}
                     // 키 함수는 쓸 때만 넘긴다 — computeItemKey={undefined} 를 그대로 넘기면 react-virtuoso 의 기본 키 함수가 undefined 로 덮여
                     // "n is not a function" 으로 표 전체가 그려지지 않았다(1.3.0, 2026-10-18).
@@ -1965,7 +2053,7 @@ function VirtualDataTableComponent<T>({
                 <Box
                     sx={{
                         position: autoHeight ? "static" : "absolute",
-                        top: columnHeight,
+                        top: mobileList ? 0 : columnHeight,
                         left: 0,
                         right: 0,
                         py: 6,

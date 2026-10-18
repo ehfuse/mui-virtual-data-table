@@ -65,6 +65,13 @@ export interface DataColumn<T> {
      */
     onCellClick?: (item: T, index: number, event: React.MouseEvent) => void;
     /**
+     * 폰 목록(mobile)에서 이 열이 설 자리(1.6.0). 주지 않으면 첫 열은 title, 나머지는 meta 다.
+     * title 제목(굵게 · 첫 줄) · thumb 왼쪽 사진 · badge 제목 오른쪽(상태 칩) · sub 제목 아래 한 줄 · meta 아래 "머리글 값" 묶음 · false 숨김.
+     */
+    mobile?: VDTMobileSlot | false;
+    /** 폰 목록 meta 줄의 이름 — 기본은 머리글(text)이 글일 때 그 글. false 면 이름 없이 값만. */
+    mobileLabel?: React.ReactNode | false;
+    /**
      * 칸을 아래 줄까지 합친다 — 그 줄에서 합칠 줄 수를 돌려주고, 위 칸에 덮인 줄에서는 0 을 돌려준다(칸을 그리지 않는다).
      * 가상화로 보이는 줄만 그리면 덮은 칸이 사라질 수 있어 autoHeight 표 · 줄이 적은 표에서만 쓴다.
      */
@@ -131,6 +138,17 @@ export interface VDTOverscan {
 /**
  * 데이터 기반 가상화 테이블 컴포넌트 Props
  */
+/** 폰 목록에서 열이 설 자리(1.6.0) */
+export type VDTMobileSlot = "title" | "thumb" | "badge" | "sub" | "meta";
+
+/** 폰 목록 설정(1.6.0) */
+export interface VDTMobileConfig<T> {
+    /** 폰 목록으로 바꿀 미디어쿼리 — 기본 "(max-width:599.95px)"(MUI sm 미만) */
+    query?: string;
+    /** 줄 하나를 통째로 그린다 — 주면 열의 mobile 자리 대신 이것을 쓴다. 줄 누름 · 선택 표시는 표가 그대로 한다. */
+    renderRow?: (item: T, index: number) => React.ReactNode;
+}
+
 export interface VirtualDataTableProps<T> {
     data: T[]; // 표시할 데이터 배열
     totalCount: number; // 총 데이터 개수
@@ -244,4 +262,10 @@ export interface VirtualDataTableProps<T> {
      * 노션풍 색 모드(1.3.0). 기본은 MUI 테마의 palette.mode 를 따른다 — 앱 테마는 밝은데 이 화면만 어둡게 그리는 경우(업무함 다크 스위치) 준다.
      */
     colorMode?: "light" | "dark";
+    /**
+     * 폰 목록(1.6.0) — 화면이 좁으면(query) 머리 줄 없이 줄마다 카드 한 칸(사진 · 제목 · 칩 · 아래 정보 줄)으로 그린다.
+     * 가상화 · 더 불러오기 · 줄 누름 · 선택 줄 표시는 표와 같다. 칸 자리는 열의 mobile 로 정하고, 통째로 바꾸려면 renderRow.
+     * 머리(정렬 · 거르기) · 합계 줄 · 고정 줄은 폰 목록에서 그리지 않는다. true 면 기본 설정.
+     */
+    mobile?: boolean | VDTMobileConfig<T>;
 }
