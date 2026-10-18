@@ -2057,6 +2057,8 @@ function VirtualDataTableComponent<T>({
                         left: 0,
                         right: 0,
                         py: 6,
+                        // 좌우 16px — 틀 없는 표(framed=false · 폰 목록)는 안쪽 여백이 없어 긴 안내 글이 화면 끝까지 닿았다(1.6.1)
+                        px: 2,
                         textAlign: "center",
                         fontSize: 14,
                         color: notionTokens.emptyColor,
@@ -2080,6 +2082,8 @@ function VirtualDataTableComponent<T>({
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 2,
+                        px: 2, // 틀 없는 표에서도 안내 글이 화면 끝에 닿지 않게(1.6.1)
+                        textAlign: "center",
                         // 표 전체(머리 포함)를 덮는 상자라 빈 목록에서 머리 칸 정렬 · 우클릭 메뉴가 먹지 않았다(1.4.2) —
                         // 상자는 통과시키고 가운데 내용(안내 · 단추)만 눌리게 한다.
                         pointerEvents: "none",
