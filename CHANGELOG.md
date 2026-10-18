@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0
+
+### Added
+
+- **머리 칸 우클릭 메뉴.** 머리 칸(th)을 우클릭하면 브라우저 메뉴 대신 정렬 · 거르기 메뉴가 그 칸 아래(누른 가로 자리)에 바로 뜹니다.
+  - 정렬 — `sortable` 열 + `onSort` 가 있으면 "오름차순 정렬 · 내림차순 정렬". `onSortClear` 를 주면 그 열로 정렬 중일 때 "정렬 풀기"(같은 방향을 다시 골라도 풉니다).
+  - 거르기 — 열 옵션 `filterOptions` · `filterValues` · `onFilterChange` · `filterMultiple`(기본 여러 개). 고른 값이 있으면 "거르기 풀기", 머리글은 강조색 + 거르기 아이콘.
+  - `onHeaderContextMenu(column, event)` — 화면이 이미 가진 머리 메뉴를 우클릭에도 열 때. true 를 돌려주거나 `preventDefault()` 하면 기본 메뉴를 띄우지 않습니다.
+  - 열 옵션 `headerMenu: false` — 그 열은 메뉴를 띄우지 않습니다.
+
+### Changed
+
+- 머리 칸(묶음 머리 포함)에서는 브라우저 우클릭 메뉴가 뜨지 않습니다(정렬 · 거르기가 없는 열도). 왼쪽 클릭 정렬은 그대로입니다.
+
 ## 1.3.2
 
 ### Added

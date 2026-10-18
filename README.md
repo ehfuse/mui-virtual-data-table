@@ -152,6 +152,10 @@ function App() {
     rowKeyFromId={boolean}                  // Use getRowId as the React key of rows (rows with inline editors)
     onEndReached={() => void}               // Fired every time the end is reached (no minimum / no same-length latch)
     colorMode={"light" | "dark"}            // notion colors independent of the MUI palette mode
+
+    // Optional - 1.4.0 header context menu (right-click on th never shows the browser menu)
+    onSortClear={() => void}                // adds "정렬 풀기" to the header menu (and re-picking the active direction clears)
+    onHeaderContextMenu={(column, event) => boolean | void} // custom header menu — return true or preventDefault() to skip the built-in one
 />
 ```
 
@@ -167,6 +171,24 @@ function App() {
 { id: "c", text: "열", headerProps: { draggable: true, onDrop } }  // extra th attributes (drag to reorder, title…)
 { id: "who", text: "책임자", width: 110, colSpan: (item) => (item.isEvent ? 2 : 1) } // 1.3.0: merge right (the covered column is not drawn)
 { id: "title", text: "제목", minWidth: 220 }                // 1.3.0: flexible column (no width) with a minimum — table min width = sum, scrolls sideways
+```
+
+Header context menu (1.4.0) — right-click a header cell:
+
+```tsx
+// sort items appear for sortable columns when onSort is given
+{ id: "name", text: "이름", sortable: true }
+// filter checklist (multi by default; filterMultiple: false = pick one)
+{
+    id: "status", text: "상태",
+    filterOptions: [{ value: "open", label: "진행" }, { value: "done", label: "완료" }],
+    filterValues: status,                 // string[] — non-empty → header turns primary + filter icon
+    onFilterChange: (values) => setStatus(values),
+}
+{ id: "memo", text: "메모", headerMenu: false } // no menu on this column (browser menu still blocked)
+
+// open your own header menu instead
+<VirtualDataTable onHeaderContextMenu={(col, e) => (col.id === "owner" ? (openOwnerMenu(e), true) : false)} … />
 ```
 
 Pinned rows example (1.3.0):

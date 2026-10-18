@@ -43,6 +43,10 @@ import {
     TableFooter as MuiTableFooter,
     TableRow as MuiTableRow,
     TableSortLabel,
+    Menu,
+    MenuItem,
+    Divider,
+    SvgIcon,
     Paper,
     Typography,
     useTheme,
@@ -95,6 +99,29 @@ const NOTION_DARK = {
     selectedBar: "#60a5fa",
 };
 
+/** 머리 우클릭 메뉴의 아이콘(Material 아이콘 경로) — @mui/icons-material 을 의존성으로 들이지 않으려고 경로만 옮겨 둔다. */
+const ICON_PATHS = {
+    asc: "M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z",
+    desc: "M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z",
+    checked: "M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
+    unchecked: "M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z",
+    check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
+    filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
+};
+
+function PathIcon({ d, size = 18, color }: { d: string; size?: number; color?: string }) {
+    return (
+        <SvgIcon sx={{ fontSize: size, flexShrink: 0, color }}>
+            <path d={d} />
+        </SvgIcon>
+    );
+}
+
+/** 이 열이 머리 메뉴에 거르기 목록을 갖는지 — 값 목록과 바뀜 알림이 둘 다 있어야 한다. */
+function hasColumnFilter<T>(col: DataColumn<T>): boolean {
+    return Boolean(col.filterOptions && col.onFilterChange);
+}
+
 function VirtualDataTableComponent<T>({
     data,
     loading = false,
@@ -108,6 +135,8 @@ function VirtualDataTableComponent<T>({
     striped,
     rowDivider = true,
     onSort,
+    onSortClear,
+    onHeaderContextMenu,
     onLoadMore,
     sortBy,
     sortDirection,
@@ -631,6 +660,67 @@ function VirtualDataTableComponent<T>({
         [onSort, sortBy, sortDirection],
     );
 
+    /**
+     * 머리 우클릭 메뉴(1.4.0). 열은 요소가 아니라 id 로 쥔다 — 값을 고르면 소비처가 columns 를 새로 만들어 머리 칸이 다시 그려지는데,
+     * 요소를 쥐면 옛 요소에 붙어 메뉴가 엉뚱한 데로 가거나 닫힌다. 자리도 좌표로 둔다(누른 x · 머리 칸 바닥 y).
+     */
+    const [headerMenu, setHeaderMenu] = useState<{ colId: string; x: number; y: number } | null>(null);
+    const onHeaderContextMenuRef = useRef(onHeaderContextMenu);
+    onHeaderContextMenuRef.current = onHeaderContextMenu;
+    const onSortRef = useRef(onSort);
+    onSortRef.current = onSort;
+
+    /**
+     * 머리 칸 우클릭 — 브라우저 메뉴는 늘 막는다(머리에서 "뒤로 · 새로고침" 메뉴는 쓸 데가 없고, 정렬 · 거르기 메뉴와 겹쳐 뜬다).
+     * 소비처 처리(headerProps.onContextMenu · onHeaderContextMenu)가 먼저다 — 그쪽이 preventDefault 했거나 true 를 돌려주면 기본 메뉴를 띄우지 않는다.
+     * 그래서 막는 preventDefault 는 소비처를 부른 뒤에 한다(먼저 막으면 "처리했다" 를 가려낼 수 없다).
+     */
+    const handleHeaderContextMenu = useCallback(
+        (col: DataColumn<T> | null, event: React.MouseEvent<HTMLTableCellElement>) => {
+            if (!col) {
+                event.preventDefault();
+                return;
+            }
+            col.headerProps?.onContextMenu?.(event);
+            let handled = event.defaultPrevented;
+            if (!handled) handled = onHeaderContextMenuRef.current?.(col, event) === true || event.defaultPrevented;
+            event.preventDefault();
+            if (handled || col.headerMenu === false) return;
+            const canSort = Boolean(col.sortable && onSortRef.current);
+            if (!canSort && !hasColumnFilter(col)) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            setHeaderMenu({ colId: String(col.id), x: event.clientX, y: rect.bottom });
+        },
+        [],
+    );
+
+    /** 머리글 — 거르기가 걸린 열은 강조색 + 거르기 아이콘(HeadSortFilter 와 같은 표시). */
+    const renderHeaderText = useCallback(
+        (col: DataColumn<T>) => {
+            if (!(col.filterValues && col.filterValues.length > 0)) return col.text;
+            return (
+                <Box
+                    component="span"
+                    sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        maxWidth: "100%",
+                        color: "primary.main",
+                        fontWeight: 600,
+                        verticalAlign: "middle",
+                    }}
+                >
+                    <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {col.text}
+                    </Box>
+                    <PathIcon d={ICON_PATHS.filter} size={16} />
+                </Box>
+            );
+        },
+        [],
+    );
+
     // 스크롤 끝 근처에서만 추가 로드를 실행해 scroll 핫패스 부담을 줄인다.
     const handleEndReached = useCallback(
         (endIndex: number) => {
@@ -786,6 +876,7 @@ function VirtualDataTableComponent<T>({
                             key={String(col.id)}
                             align={col.align || "left"}
                             {...col.headerProps}
+                            onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                             style={{
                                 width: col.width,
                                 minWidth: col.width ?? col.minWidth,
@@ -830,7 +921,7 @@ function VirtualDataTableComponent<T>({
                                             handleSort(String(col.id))
                                         }
                                     >
-                                        {col.text}
+                                        {renderHeaderText(col)}
                                         <TableSortLabel
                                             active={sortBy === col.id}
                                             direction={
@@ -874,7 +965,7 @@ function VirtualDataTableComponent<T>({
                                     </Box>
                                 </div>
                             ) : (
-                                col.text
+                                renderHeaderText(col)
                             )}
                         </TableCell>
                     ))}
@@ -890,6 +981,7 @@ function VirtualDataTableComponent<T>({
                     rowSpan={2}
                     align={col.align || "left"}
                     {...col.headerProps}
+                    onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                     style={{
                         width: col.width,
                         minWidth: col.width,
@@ -932,7 +1024,7 @@ function VirtualDataTableComponent<T>({
                                 }}
                                 onClick={() => handleSort(String(col.id))}
                             >
-                                {col.text}
+                                {renderHeaderText(col)}
                                 <TableSortLabel
                                     active={sortBy === col.id}
                                     direction={
@@ -979,7 +1071,7 @@ function VirtualDataTableComponent<T>({
                             </Box>
                         </div>
                     ) : (
-                        col.text
+                        renderHeaderText(col)
                     )}
                 </TableCell>
             )),
@@ -988,6 +1080,7 @@ function VirtualDataTableComponent<T>({
                     key={group}
                     align="center"
                     colSpan={cols.length}
+                    onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(null, e)}
                     style={{
                         fontWeight: "bold",
                         position: "sticky",
@@ -1009,6 +1102,7 @@ function VirtualDataTableComponent<T>({
                         key={String(col.id)}
                         align={col.align || "left"}
                         {...col.headerProps}
+                        onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                         style={{
                             width: col.width,
                             minWidth: col.width,
@@ -1051,7 +1145,7 @@ function VirtualDataTableComponent<T>({
                                     }}
                                     onClick={() => handleSort(String(col.id))}
                                 >
-                                    {col.text}
+                                    {renderHeaderText(col)}
                                     <TableSortLabel
                                         active={sortBy === col.id}
                                         direction={
@@ -1098,7 +1192,7 @@ function VirtualDataTableComponent<T>({
                                 </Box>
                             </div>
                         ) : (
-                            col.text
+                            renderHeaderText(col)
                         )}
                     </TableCell>
                 )),
@@ -1110,7 +1204,7 @@ function VirtualDataTableComponent<T>({
                 <MuiTableRow>{secondRowCells}</MuiTableRow>
             </>
         );
-    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle]);
+    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle, handleHeaderContextMenu, renderHeaderText]);
 
     /**
      * 테이블 행 컨텐츠 렌더링 함수 (기존 VirtualDataTable 스타일)
@@ -1682,6 +1776,117 @@ function VirtualDataTableComponent<T>({
     const AutoTableRow = autoParts.TableRow as React.ComponentType<any>;
     const AutoTableFoot = autoParts.TableFoot as React.ComponentType<any>;
 
+    // 머리 우클릭 메뉴 — 열은 매 렌더 columns 에서 다시 찾는다(고른 값 · 정렬 표시가 바로 따라오게). 열이 사라졌으면 그리지 않는다.
+    const menuColumn = headerMenu ? columns.find((col) => String(col.id) === headerMenu.colId) : undefined;
+    const closeHeaderMenu = () => setHeaderMenu(null);
+    let headerMenuNode: React.ReactNode = null;
+    if (headerMenu && menuColumn) {
+        const colId = String(menuColumn.id);
+        const canSort = Boolean(menuColumn.sortable && onSort);
+        const canFilter = hasColumnFilter(menuColumn);
+        const activeSort = sortBy === colId ? sortDirection : undefined;
+        const picked = menuColumn.filterValues ?? [];
+        const multiple = menuColumn.filterMultiple !== false;
+        // 14px 항목 — 앱의 머리 메뉴(HeadSortFilter)와 같은 크기 · 아이콘 18px.
+        const itemSx = { gap: 1, fontSize: 14, minHeight: 36 };
+        // 정렬은 한 번 고르면 끝이라 닫는다. 같은 방향을 다시 고르면 풀기(onSortClear 가 있을 때).
+        const pickSort = (direction: SortDirection) => {
+            closeHeaderMenu();
+            if (activeSort === direction) {
+                onSortClear?.();
+                return;
+            }
+            onSort?.(colId, direction);
+        };
+        // 여러 값 고르기는 연달아 고르므로 열어 둔다. 하나만 고르는 열은 고르면 닫는다.
+        const toggleValue = (value: string) => {
+            const on = picked.includes(value);
+            if (multiple) {
+                menuColumn.onFilterChange?.(on ? picked.filter((item) => item !== value) : [...picked, value]);
+                return;
+            }
+            closeHeaderMenu();
+            menuColumn.onFilterChange?.(on ? [] : [value]);
+        };
+        const items: React.ReactNode[] = [];
+        if (canSort) {
+            items.push(
+                <MenuItem key="asc" selected={activeSort === "asc"} onClick={() => pickSort("asc")} sx={itemSx}>
+                    <PathIcon d={ICON_PATHS.asc} color="text.secondary" />
+                    오름차순 정렬
+                </MenuItem>,
+                <MenuItem key="desc" selected={activeSort === "desc"} onClick={() => pickSort("desc")} sx={itemSx}>
+                    <PathIcon d={ICON_PATHS.desc} color="text.secondary" />
+                    내림차순 정렬
+                </MenuItem>,
+            );
+            if (activeSort && onSortClear) {
+                items.push(
+                    <MenuItem
+                        key="sort-clear"
+                        onClick={() => {
+                            closeHeaderMenu();
+                            onSortClear();
+                        }}
+                        sx={{ ...itemSx, color: "text.secondary" }}
+                    >
+                        정렬 풀기
+                    </MenuItem>,
+                );
+            }
+        }
+        if (canSort && canFilter) items.push(<Divider key="div-sort" />);
+        if (canFilter) {
+            (menuColumn.filterOptions ?? []).forEach((option) => {
+                const on = picked.includes(option.value);
+                items.push(
+                    <MenuItem key={`f:${option.value}`} selected={!multiple && on} onClick={() => toggleValue(option.value)} sx={itemSx}>
+                        {multiple ? (
+                            <PathIcon d={on ? ICON_PATHS.checked : ICON_PATHS.unchecked} color={on ? "primary.main" : "text.disabled"} />
+                        ) : (
+                            // 하나만 고르는 열 — 고른 값에만 체크, 나머지는 같은 폭을 비워 글자 줄을 맞춘다.
+                            <Box component="span" sx={{ display: "inline-flex", width: 18, flexShrink: 0, color: "primary.main" }}>
+                                {on ? <PathIcon d={ICON_PATHS.check} /> : null}
+                            </Box>
+                        )}
+                        {option.label}
+                    </MenuItem>,
+                );
+            });
+            // 걸려 있을 때만 — 하나씩 끄지 않고 한 번에 푼다.
+            if (picked.length > 0) {
+                items.push(
+                    <Divider key="div-filter" />,
+                    <MenuItem
+                        key="filter-clear"
+                        onClick={() => {
+                            closeHeaderMenu();
+                            menuColumn.onFilterChange?.([]);
+                        }}
+                        sx={{ ...itemSx, color: "text.secondary" }}
+                    >
+                        거르기 풀기
+                    </MenuItem>,
+                );
+            }
+        }
+        headerMenuNode = (
+            // 누른 자리에서 바로 뜬다 — 펼침 애니메이션은 메뉴가 늦게 따라오는 것처럼 보인다(우클릭 메뉴 공통 규칙).
+            <Menu
+                open
+                anchorReference="anchorPosition"
+                anchorPosition={{ left: headerMenu.x, top: headerMenu.y }}
+                onClose={closeHeaderMenu}
+                transitionDuration={0}
+                // 메뉴 위에서 다시 우클릭해도 브라우저 메뉴가 뜨지 않게.
+                onContextMenu={(event) => event.preventDefault()}
+                slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 180 } } }}
+            >
+                {items}
+            </Menu>
+        );
+    }
+
     // 공통 테이블 내용
     const tableContent = (
         <Box
@@ -1883,6 +2088,8 @@ function VirtualDataTableComponent<T>({
                     )}
                 </Box>
             )}
+
+            {headerMenuNode}
 
             {/* 로딩 스피너 */}
             {shouldShowLoading && (

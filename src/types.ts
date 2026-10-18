@@ -78,6 +78,19 @@ export interface DataColumn<T> {
      * 틀이 그보다 좁으면 가로로 민다 — 제목처럼 남는 폭을 다 가져가되 좁은 화면에서 0 으로 접히면 안 되는 열.
      */
     minWidth?: number;
+    /**
+     * 머리 우클릭 메뉴의 거르기 값 목록(1.4.0). onFilterChange 와 함께 주면 머리를 우클릭했을 때 이 값들이 고르기 목록으로 뜬다.
+     * 값은 글자다(빈 글자 = 비어 있음 같은 값도 그대로 쓴다). 거르는 일 자체는 소비처가 한다 — 표는 고른 값만 알린다.
+     */
+    filterOptions?: { value: string; label: string }[];
+    /** 지금 걸린 거르기 값(1.4.0). 하나라도 있으면 머리글이 강조색 + 거르기 아이콘으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */
+    filterValues?: string[];
+    /** 거르기 값이 바뀔 때(1.4.0) — 다 풀면 빈 배열. */
+    onFilterChange?: (values: string[]) => void;
+    /** 여러 값을 함께 고르는지(기본 true). false 면 하나만 — 고르면 메뉴가 닫히고, 같은 값을 다시 고르면 풀린다. */
+    filterMultiple?: boolean;
+    /** false 면 이 열은 머리 우클릭 메뉴를 띄우지 않는다(브라우저 메뉴는 여전히 막는다, 1.4.0). */
+    headerMenu?: boolean;
 }
 
 /** 정렬 방향 타입 */
@@ -124,6 +137,17 @@ export interface VirtualDataTableProps<T> {
     striped?: string | boolean; // Zebra striping (true: 기본 회색, string: 지정 색상, false: 없음)
     rowDivider?: boolean; // 행 구분선 표시 여부 (기본값: true)
     onSort?: (columnId: string, direction: SortDirection) => void; // 정렬 이벤트 핸들러
+    /**
+     * 정렬 풀기(1.4.0) — 주면 머리 우클릭 메뉴에 "정렬 풀기" 가 서고(그 열로 정렬 중일 때), 같은 방향을 다시 고르면 이것을 부른다.
+     * 기본 정렬로 되돌릴 수 있는 목록만 준다.
+     */
+    onSortClear?: () => void;
+    /**
+     * 머리 칸 우클릭(1.4.0). 브라우저 메뉴는 늘 막는다. true 를 돌려주거나 event.preventDefault() 를 부르면 "처리했다" 로 보고
+     * 기본 머리 메뉴(정렬 · 거르기)를 띄우지 않는다 — 화면이 이미 가진 머리 메뉴를 우클릭에도 열 때 쓴다.
+     * 묶음 머리(group) 칸에서는 부르지 않는다.
+     */
+    onHeaderContextMenu?: (column: DataColumn<T>, event: React.MouseEvent<HTMLTableCellElement>) => boolean | void;
     onLoadMore?: (offset: number, limit: number) => void; // 더 많은 데이터 로드 요청 핸들러
     sortBy?: string; // 현재 정렬 필드
     sortDirection?: SortDirection; // 현재 정렬 방향
