@@ -1943,6 +1943,9 @@ function VirtualDataTableComponent<T>({
                                         "& table": { backgroundColor: notionTokens.bg },
                                     }),
                               overflow: "hidden",
+                              // 머리 칸 안의 인라인 상자(아이콘 + 글자를 묶은 inline-flex 머리 · 머리글 필터 단추)는 기준선에 서서 아래에
+                              // 글자 내림 자리가 남아 글자가 1~3px 위로 떠 보였다(1.4.3) — 칸 가운데에 세운다.
+                              "& thead tr th > *": { verticalAlign: "middle" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
