@@ -488,8 +488,9 @@ function VirtualDataTableComponent<T>({
                                 "& .MuiTable-root": {
                                     // 노션풍은 좌우 여백을 종이(Paper/Box) 쪽에 준다 — 테두리가 여백 안쪽에 그려져야 한다.
                                     paddingRight: notion ? 0 : paddingX,
-                                    paddingTop: paddingTop,
-                                    paddingBottom: paddingBottom,
+                                    // px 로 준다 — sx 에 숫자를 그대로 넣으면 MUI 가 간격 단위(×8)로 읽어 106 이 848px 가 됐다(1.7.1)
+                                    paddingTop: `${paddingTop}px`,
+                                    paddingBottom: `${paddingBottom}px`,
                                 },
                             }}
                         />
