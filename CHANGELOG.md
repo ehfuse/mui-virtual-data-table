@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+### Fixed
+
+- **`rowKeyFromId` 를 안 쓰는 가상 표가 그려지지 않던 것(1.3.0).** `computeItemKey={undefined}` 를 그대로 넘겨 react-virtuoso 의 기본 키 함수가 덮였다("n is not a function"). 쓸 때만 넘깁니다.
+
 ## 1.3.0
 
 ### Added

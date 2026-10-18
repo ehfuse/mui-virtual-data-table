@@ -1799,11 +1799,11 @@ function VirtualDataTableComponent<T>({
                     fixedHeaderContent={fixedHeaderContent}
                     fixedFooterContent={hasFooter ? fixedFooterContent : undefined}
                     itemContent={rowContent}
-                    computeItemKey={
-                        rowKeyFromId && getRowId
-                            ? (index: number, item: T) => (item ? getRowId(item, index) : `vdt-${index}`)
-                            : undefined
-                    }
+                    // 키 함수는 쓸 때만 넘긴다 — computeItemKey={undefined} 를 그대로 넘기면 react-virtuoso 의 기본 키 함수가 undefined 로 덮여
+                    // "n is not a function" 으로 표 전체가 그려지지 않았다(1.3.0, 2026-10-18).
+                    {...(rowKeyFromId && getRowId
+                        ? { computeItemKey: (index: number, item: T) => (item ? getRowId(item, index) : `vdt-${index}`) }
+                        : {})}
                     endReached={handleEndReached}
                     scrollerRef={(el) => {
                         scrollerElRef.current = el instanceof HTMLElement ? el : null;
