@@ -209,7 +209,8 @@ export function HeaderMenu({
     };
 
     const items: React.ReactNode[] = [];
-    if (header) items.push(<React.Fragment key="header">{header}</React.Fragment>);
+    // 머리 · 덧붙일 항목은 Fragment 로 감싸지 않고 풀어 넣는다 — MUI Menu 는 Fragment 자식을 받지 않는다(개발 모드 경고, 1.5.3).
+    if (header) items.push(...React.Children.toArray(header).map((node, i) => (React.isValidElement(node) ? React.cloneElement(node, { key: `h${i}` }) : node)));
     if (sort) {
         const pickSort = (direction: HeaderMenuSortDirection) => {
             close();
@@ -355,7 +356,7 @@ export function HeaderMenu({
     }
     if (children) {
         if (items.length > 0) items.push(<HeaderMenuDivider key="div-children" />);
-        items.push(<React.Fragment key="children">{children}</React.Fragment>);
+        items.push(...React.Children.toArray(children));
     }
 
     const useAnchorEl = !anchorPosition && Boolean(anchorEl);

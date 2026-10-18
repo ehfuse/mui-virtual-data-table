@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.3
+
+### Fixed
+
+- `HeaderMenu` 의 `header` · `children` 을 Fragment 로 감싸 넣어 MUI Menu 가 개발 모드에서 Fragment 경고를 내던 것 — 풀어 넣습니다.
+
 ## 1.5.2
 
 ### Fixed
