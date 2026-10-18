@@ -156,6 +156,11 @@ export interface VirtualDataTableProps<T> {
      */
     framed?: boolean;
     /**
+     * 머리 줄 윗선(노션풍 · framed={false} 일 때). 틀 없는 표를 머리 줄(도구 줄)과 한 상자에 넣으면 표 머리 위가 경계 없이 붙는다 —
+     * 이 선이 그 경계를 긋는다. 틀이 있는 표는 바깥 테두리가 윗선이라 쓰지 않는다. 기본 false.
+     */
+    headerTopBorder?: boolean;
+    /**
      * 줄 높이 방식. "fixed"(기본)는 모든 줄을 rowHeight 로 박는다(합계 줄 떨림 방지). "auto" 는 rowHeight 를 최소 높이로 두고
      * 내용(여러 줄 글 · 칸 안 단추 두 줄)만큼 늘어난다.
      */

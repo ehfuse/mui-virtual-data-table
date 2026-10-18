@@ -136,6 +136,7 @@ function App() {
 
     // Optional - Layout (1.2.0)
     framed={boolean}                        // notion: outer border + paper padding (default: true). false = fill an already-bordered box
+    headerTopBorder={boolean}               // notion + framed=false: draw a top line on the header row (table shares a box with a toolbar above)
     tableLayout={"fixed" | "auto"}          // "auto": column widths follow content, wide tables scroll horizontally
     rowHeightMode={"fixed" | "auto"}        // "auto": rowHeight becomes a minimum, rows grow with content
     autoHeight={boolean}                    // No virtualization / no own scroll — the table is as tall as its rows (page scrolls)

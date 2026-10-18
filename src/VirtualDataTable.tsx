@@ -128,6 +128,7 @@ function VirtualDataTableComponent<T>({
     footerSx,
     variant = "default",
     framed = true,
+    headerTopBorder = false,
     rowHeightMode = "fixed",
     tableLayout = "fixed",
     renderFullWidthRow,
@@ -1745,7 +1746,8 @@ function VirtualDataTableComponent<T>({
                                   fontWeight: "500 !important",
                                   color: notionTokens.headerColor,
                                   backgroundColor: `${notionTokens.bg} !important`,
-                                  borderTop: "none",
+                                  // 틀 없는 표를 도구 줄과 한 상자에 넣으면 머리 위 경계가 없다 — 그때만 윗선(headerTopBorder).
+                                  borderTop: !framed && headerTopBorder ? `1px solid ${notionTokens.borderStrong}` : "none",
                                   borderBottom: `1px solid ${notionTokens.borderStrong}`,
                                   // 칸 사이 세로선 — 마지막 칸 뒤에는 긋지 않는다(바깥 테두리와 겹쳐 두 줄로 보인다).
                                   borderRight: `1px solid ${notionTokens.border}`,

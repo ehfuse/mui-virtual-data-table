@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2
+
+### Added
+
+- `headerTopBorder` (노션풍 · `framed={false}`) — 머리 줄 윗선. 틀 없는 표를 도구 줄과 한 상자에 넣으면 표 머리 위가 경계 없이 붙던 것을 긋습니다.
+
 ## 1.3.1
 
 ### Fixed
