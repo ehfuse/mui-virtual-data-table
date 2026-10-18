@@ -888,6 +888,7 @@ function VirtualDataTableComponent<T>({
                                     }}
                                 >
                                     <Box
+                                        className="vdt-sort-box"
                                         sx={{
                                             position: "relative",
                                             cursor: "default",
@@ -995,6 +996,7 @@ function VirtualDataTableComponent<T>({
                             }}
                         >
                             <Box
+                                className="vdt-sort-box"
                                 sx={{
                                     position: "relative",
                                     cursor: "default",
@@ -1118,6 +1120,7 @@ function VirtualDataTableComponent<T>({
                                 }}
                             >
                                 <Box
+                                    className="vdt-sort-box"
                                     sx={{
                                         position: "relative",
                                         cursor: "default",
@@ -1868,6 +1871,10 @@ function VirtualDataTableComponent<T>({
                               // 넘치면 말줄임, 전체 이름은 title(글자 머리) 툴팁으로 본다. 높이는 columnHeight 그대로다.
                               "& thead > tr > th": { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
                               "& thead > tr > th > *": { maxWidth: "100%" },
+                              // 정렬 화살표는 머리글 오른쪽 밖(left: 100%)에 떠 있어, 오른쪽 맞춤 칸에서는 칸 여백(14px)을 넘어 위의 overflow 에 잘렸다(합계 칸).
+                              // 노션풍은 화살표 자리를 머리글 상자 안에 두고(오른쪽 20px) 화살표를 그 자리 끝에 세운다.
+                              "& thead .vdt-sort-box": { paddingRight: "20px" },
+                              "& thead .vdt-sort-box > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",

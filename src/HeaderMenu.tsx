@@ -66,9 +66,11 @@ export function HeaderFilterIcon({ size = 14, active, color }: { size?: number; 
 export const HEADER_MENU_ITEM_SX = {
     gap: 1,
     fontSize: HEADER_MENU_FONT_SIZE,
-    lineHeight: 1.43,
+    // 높이는 줄 높이 + 위아래 여백으로 정한다(20 + 7 + 7 = 34) — MenuItem 의 넓은 화면 규칙(min-height: auto)이 미디어 쿼리라
+    // sx 의 minHeight 를 이겨 28px 로 줄었다(1.5.2).
+    lineHeight: "20px",
     minHeight: HEADER_MENU_ITEM_HEIGHT,
-    py: 0.5,
+    py: "7px",
     px: 1.5,
 } as const;
 
