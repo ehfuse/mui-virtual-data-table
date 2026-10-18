@@ -53,7 +53,7 @@ import { TableVirtuoso } from "react-virtuoso";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 import { CssSpinner } from "./CssSpinner";
-import { HeaderMenu, HEADER_MENU_ICON_PATHS, HeaderMenuIcon } from "./HeaderMenu";
+import { HeaderMenu, HeaderFilterIcon } from "./HeaderMenu";
 
 import OverlayScrollbar from "@ehfuse/overlay-scrollbar";
 import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
@@ -673,10 +673,11 @@ function VirtualDataTableComponent<T>({
         [],
     );
 
-    /** 머리글 — 거르기가 걸린 열은 강조색 + 거르기 아이콘(HeadSortFilter 와 같은 표시). */
+    /** 머리글 — 거를 수 있는 열은 거르기 아이콘을 붙이고, 걸려 있으면 강조색으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */
     const renderHeaderText = useCallback(
         (col: DataColumn<T>) => {
-            if (!(col.filterValues && col.filterValues.length > 0)) return col.text;
+            if (!hasColumnFilter(col)) return col.text;
+            const active = Boolean(col.filterValues && col.filterValues.length > 0);
             return (
                 <Box
                     component="span"
@@ -685,15 +686,15 @@ function VirtualDataTableComponent<T>({
                         alignItems: "center",
                         gap: 0.5,
                         maxWidth: "100%",
-                        color: "primary.main",
-                        fontWeight: 600,
+                        color: active ? "primary.main" : undefined,
+                        fontWeight: active ? 600 : undefined,
                         verticalAlign: "middle",
                     }}
                 >
                     <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {col.text}
                     </Box>
-                    <HeaderMenuIcon d={HEADER_MENU_ICON_PATHS.filter} size={16} />
+                    <HeaderFilterIcon active={active} />
                 </Box>
             );
         },

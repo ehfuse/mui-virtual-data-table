@@ -12,6 +12,7 @@ export {
     HeaderMenuItem,
     HeaderMenuDivider,
     HeaderMenuIcon,
+    HeaderFilterIcon,
     headerMenuAnchor,
     HEADER_MENU_ICON_PATHS,
     HEADER_MENU_ITEM_SX,

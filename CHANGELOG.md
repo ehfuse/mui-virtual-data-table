@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.1
+
+### Added
+
+- `HeaderFilterIcon` — 머리 칸 거르기 표시. @ehfuse/mui-filter-button 의 TuneIcon 과 같은 그림의 작은 판(14px, 글자색을 따르고 `active` 면 강조색).
+  머리 줄 필터 단추와 머리 칸 거르기가 같은 물건으로 읽히게 합니다.
+
+### Changed
+
+- 거를 수 있는 열(`filterOptions` + `onFilterChange`)의 머리글에 늘 거르기 아이콘이 붙습니다(걸리면 강조색 · 굵게). 1.4 는 걸렸을 때만 붙었습니다.
+
 ## 1.5.0
 
 ### Added

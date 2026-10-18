@@ -37,6 +37,31 @@ export function HeaderMenuIcon({ d, size = HEADER_MENU_ICON_SIZE, color }: { d: 
     );
 }
 
+/**
+ * 머리 칸의 거르기 표시(1.5.1) — @ehfuse/mui-filter-button 의 TuneIcon(선 두 줄 + 동그라미 두 개)과 같은 그림이다(출처: mui-filter-button
+ * src/icons/TuneIcon.tsx). 머리 줄 필터 단추와 머리 칸 거르기가 같은 물건으로 읽히게 그 아이콘을 쓰되, 표가 그 패키지에 기대지 않게 경로를 옮겨 둔다.
+ * 색은 글자색을 따른다(currentColor) — 평소 머리 글자색, 걸리면 강조색(active). 14px 에서는 1.5 굵기가 정렬 화살표(채운 아이콘)보다 가늘어 보여 1.8 로 둔다.
+ */
+export function HeaderFilterIcon({ size = 14, active, color }: { size?: number; active?: boolean; color?: string }) {
+    const stroke = { stroke: "currentColor", strokeWidth: 1.8, strokeMiterlimit: 10, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+    return (
+        <Box
+            component="svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+            sx={{ width: size, height: size, flexShrink: 0, color: active ? "primary.main" : color ?? "currentColor", verticalAlign: "middle" }}
+        >
+            <path d="M2 17.5H7" {...stroke} />
+            <path d="M22 6.5H17" {...stroke} />
+            <path d="M13 17.5H22" {...stroke} />
+            <path d="M11 6.5H2" {...stroke} />
+            <path d="M10 20.3999C8.34315 20.3999 7 19.0568 7 17.3999C7 15.743 8.34315 14.3999 10 14.3999C11.6569 14.3999 13 15.743 13 17.3999C13 19.0568 11.6569 20.3999 10 20.3999Z" {...stroke} />
+            <path d="M14 9.3999C15.6569 9.3999 17 8.05676 17 6.3999C17 4.74305 15.6569 3.3999 14 3.3999C12.3431 3.3999 11 4.74305 11 6.3999C11 8.05676 12.3431 9.3999 14 9.3999Z" {...stroke} />
+        </Box>
+    );
+}
+
 /** 항목 모양 — 다른 메뉴(도구 줄 단추 메뉴 등)도 이 sx 로 같은 크기를 쓴다. */
 export const HEADER_MENU_ITEM_SX = {
     gap: 1,
