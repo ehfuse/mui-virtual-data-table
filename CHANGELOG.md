@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1
+
+### Added
+
+- 열 옵션 `sortMenu` — 머리 우클릭 메뉴의 정렬 항목을 `sortable` 과 따로 켜고 끕니다. 머리를 직접 그리고 클릭을 `headerProps` 로 다는 열(@ehfuse/taskbox 목록표)은
+  `sortable` 을 켜면 표의 정렬 표시 · 클릭이 겹쳐 두 번 뒤집히므로, `sortable` 없이 `sortMenu: true` 로 메뉴에만 정렬을 둡니다.
+
 ## 1.4.0
 
 ### Added

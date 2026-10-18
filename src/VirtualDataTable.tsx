@@ -686,7 +686,7 @@ function VirtualDataTableComponent<T>({
             if (!handled) handled = onHeaderContextMenuRef.current?.(col, event) === true || event.defaultPrevented;
             event.preventDefault();
             if (handled || col.headerMenu === false) return;
-            const canSort = Boolean(col.sortable && onSortRef.current);
+            const canSort = Boolean((col.sortMenu ?? col.sortable) && onSortRef.current);
             if (!canSort && !hasColumnFilter(col)) return;
             const rect = event.currentTarget.getBoundingClientRect();
             setHeaderMenu({ colId: String(col.id), x: event.clientX, y: rect.bottom });
@@ -1782,7 +1782,7 @@ function VirtualDataTableComponent<T>({
     let headerMenuNode: React.ReactNode = null;
     if (headerMenu && menuColumn) {
         const colId = String(menuColumn.id);
-        const canSort = Boolean(menuColumn.sortable && onSort);
+        const canSort = Boolean((menuColumn.sortMenu ?? menuColumn.sortable) && onSort);
         const canFilter = hasColumnFilter(menuColumn);
         const activeSort = sortBy === colId ? sortDirection : undefined;
         const picked = menuColumn.filterValues ?? [];

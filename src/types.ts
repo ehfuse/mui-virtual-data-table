@@ -89,6 +89,11 @@ export interface DataColumn<T> {
     onFilterChange?: (values: string[]) => void;
     /** 여러 값을 함께 고르는지(기본 true). false 면 하나만 — 고르면 메뉴가 닫히고, 같은 값을 다시 고르면 풀린다. */
     filterMultiple?: boolean;
+    /**
+     * 머리 우클릭 메뉴에 정렬 항목을 둘지(1.4.1, 기본: sortable 과 같다). 머리를 직접 그리는 열(자기 정렬 표시 · 머리 클릭을 headerProps 로 다는 열)은
+     * sortable 을 켜면 표의 정렬 표시 · 클릭이 겹치므로, sortable 없이 이것만 true 로 메뉴에 정렬을 둔다. sortable 열에서 false 면 메뉴에서 뺀다.
+     */
+    sortMenu?: boolean;
     /** false 면 이 열은 머리 우클릭 메뉴를 띄우지 않는다(브라우저 메뉴는 여전히 막는다, 1.4.0). */
     headerMenu?: boolean;
 }

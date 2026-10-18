@@ -186,6 +186,7 @@ Header context menu (1.4.0) — right-click a header cell:
     onFilterChange: (values) => setStatus(values),
 }
 { id: "memo", text: "메모", headerMenu: false } // no menu on this column (browser menu still blocked)
+{ id: "due", text: <MyHeader />, sortMenu: true } // 1.4.1: sort items in the menu without VDT's sort label/click (custom-drawn header)
 
 // open your own header menu instead
 <VirtualDataTable onHeaderContextMenu={(col, e) => (col.id === "owner" ? (openOwnerMenu(e), true) : false)} … />
