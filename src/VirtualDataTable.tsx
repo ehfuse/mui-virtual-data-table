@@ -2040,6 +2040,8 @@ function VirtualDataTableComponent<T>({
                         textAlign: "center",
                         fontSize: 14,
                         color: notionTokens.emptyColor,
+                        // 글 한 줄뿐이라 누를 것이 없다 — 머리 칸 클릭 · 우클릭을 가로채지 않게.
+                        pointerEvents: "none",
                     }}
                 >
                     {emptyMessage}
@@ -2058,6 +2060,10 @@ function VirtualDataTableComponent<T>({
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 2,
+                        // 표 전체(머리 포함)를 덮는 상자라 빈 목록에서 머리 칸 정렬 · 우클릭 메뉴가 먹지 않았다(1.4.2) —
+                        // 상자는 통과시키고 가운데 내용(안내 · 단추)만 눌리게 한다.
+                        pointerEvents: "none",
+                        "& > *": { pointerEvents: "auto" },
                     }}
                 >
                     {typeof emptyMessage === "string" ? (
