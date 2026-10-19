@@ -135,6 +135,7 @@ function VirtualDataTableComponent<T>({
     rowHoverOpacity: rowHoverOpacityProp,
     viewportBuffer,
     overscan,
+    initialItemCount,
     scrollbars,
     emptyMessage = "NO DATA",
     autoHeight = false,
@@ -2057,6 +2058,8 @@ function VirtualDataTableComponent<T>({
                         bottom: viewportBufferBottom,
                     }}
                     overscan={virtuosoOverscan}
+                    // 첫 그림부터 앞쪽 줄을 그린다(1.7.3 — 다시 연 화면이 잠깐 비지 않게). 줄 수보다 많으면 virtuoso 가 경고하므로 줄인다
+                    {...(initialItemCount && data.length > 0 ? { initialItemCount: Math.min(initialItemCount, data.length) } : {})}
                     followOutput={false}
                     components={resolvedVirtuosoComponents}
                 />

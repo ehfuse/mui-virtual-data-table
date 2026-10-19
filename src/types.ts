@@ -187,6 +187,7 @@ export interface VirtualDataTableProps<T> {
     rowHoverOpacity?: number; // 행 hover 시 배경 투명도 0-1 (기본값: 0.06)
     viewportBuffer?: number | ViewportBuffer; // 뷰포트 위/아래 미리 렌더링 버퍼 px (기본값: rowHeight 기반 자동 계산)
     overscan?: number | VDTOverscan; // 가상화 overscan 범위 px (기본값: rowHeight 기반 자동 계산)
+    initialItemCount?: number; // 첫 그림에 바로 그릴 줄 수(1.7.3) — 가상 목록은 줄 높이를 먼저 재느라 처음 몇 프레임 줄을 그리지 않아, 화면을 다시 열면 목록이 잠깐 비었다
     scrollbars?: VDTOverlayScrollbarProps; // 스크롤바 커스터마이징 옵션
     emptyMessage?: string | React.ReactNode; // 데이터가 없을 때 표시할 메시지 (기본값: "NO DATA")
     LoadingComponent?: React.ComponentType<{
