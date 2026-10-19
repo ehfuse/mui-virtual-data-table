@@ -149,6 +149,15 @@ export interface VDTMobileConfig<T> {
     renderRow?: (item: T, index: number) => React.ReactNode;
 }
 
+/** 열 폭 끌어 바꾸기 설정(1.8.0) */
+export interface VDTColumnResizeConfig {
+    /** 열에 minWidth 가 없을 때 줄일 수 있는 최소 폭 px — 기본 48 */
+    minWidth?: number;
+}
+
+/** 열 키(String(column.id)) → 바꾼 폭 px(1.8.0). 없는 열은 column.width 그대로다. */
+export type VDTColumnWidths = Record<string, number>;
+
 export interface VirtualDataTableProps<T> {
     data: T[]; // 표시할 데이터 배열
     totalCount: number; // 총 데이터 개수
@@ -275,4 +284,16 @@ export interface VirtualDataTableProps<T> {
      * null 이면(아직 요소를 못 얻음) 그리지 않고 기다린다.
      */
     scrollParent?: HTMLElement | null;
+    /**
+     * 머리 칸 오른쪽 경계를 끌어 열 폭을 바꾼다(1.8.0). 경계를 두 번 누르면 그 열을 처음 폭(column.width)으로 되돌린다.
+     * 폰 목록(mobile)으로 그릴 때는 손잡이도 바꾼 폭도 쓰지 않는다. 끄면(기본) 종전과 같다.
+     */
+    columnResize?: boolean | VDTColumnResizeConfig;
+    /**
+     * 바꾼 열 폭(1.8.0) — 표는 저장소를 모른다. 소비처가 계정 · 브라우저 어디에 둘지 정해 넘긴다.
+     * 주지 않으면 표 안에서만 기억한다(다시 그리면 사라진다). columnResize 가 켜졌을 때만 쓴다.
+     */
+    columnWidths?: VDTColumnWidths;
+    /** 열 폭이 바뀌었을 때 — 끌기를 놓을 때 한 번(끄는 동안은 부르지 않는다), 두 번 눌러 되돌리면 그 열 키를 뺀 값으로(1.8.0). */
+    onColumnWidthsChange?: (widths: VDTColumnWidths) => void;
 }

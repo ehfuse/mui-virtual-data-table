@@ -35,4 +35,6 @@ export type {
     VirtualDataTableProps,
     VDTMobileConfig,
     VDTMobileSlot,
+    VDTColumnResizeConfig,
+    VDTColumnWidths,
 } from "./types";

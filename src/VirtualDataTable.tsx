@@ -57,7 +57,7 @@ import { CssSpinner } from "./CssSpinner";
 import { HeaderMenu, HeaderFilterIcon } from "./HeaderMenu";
 
 import OverlayScrollbar from "@ehfuse/overlay-scrollbar";
-import type { DataColumn, SortDirection, VirtualDataTableProps } from "./types";
+import type { DataColumn, SortDirection, VDTColumnWidths, VirtualDataTableProps } from "./types";
 
 // OverlayScrollbar 설정을 컴포넌트 외부에 상수로 선언 (재렌더링 시 동일한 참조 유지)
 const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
@@ -66,6 +66,29 @@ const OVERLAY_SCROLLBAR_TRACK_CONFIG = {
     radius: 0,
 };
 const ROW_CLICK_DRAG_THRESHOLD_PX = 5;
+/** 바꾼 열 폭이 없을 때의 빈 표 — 매 렌더 새 객체를 만들면 폭 계산 memo 가 매번 다시 돈다. */
+const EMPTY_WIDTHS: VDTColumnWidths = {};
+/** 열 폭 끌기로 칠 최소 이동 px — 경계를 눌렀다 떼는 것(두 번 누르기 포함)은 끌기가 아니다. */
+const RESIZE_DRAG_THRESHOLD_PX = 3;
+
+/** 숫자 폭은 px 글자로 — CSS 변수의 기본값(var(--x, 기본값))에 넣으려면 단위가 있어야 한다. */
+function cssPx(value: string | number | undefined): string | undefined {
+    return typeof value === "number" ? `${value}px` : value;
+}
+
+/**
+ * 표 상자에 얹은 CSS 변수(--vdt-*)를 vars 대로 맞춘다(없는 이름은 뗀다). 끄는 동안 React 상태를 바꾸면 표 부품이 다시 만들어져
+ * 가상 목록 줄까지 다시 그리므로, 끄는 동안은 변수만 바꾸고 놓을 때 한 번 상태로 옮긴다.
+ */
+function applyResizeVars(el: HTMLElement, vars: Record<string, string>) {
+    const stale: string[] = [];
+    for (let i = 0; i < el.style.length; i += 1) {
+        const name = el.style[i];
+        if (name.startsWith("--vdt-") && !(name in vars)) stale.push(name);
+    }
+    stale.forEach((name) => el.style.removeProperty(name));
+    Object.entries(vars).forEach(([name, value]) => el.style.setProperty(name, value));
+}
 
 /**
  * 데이터 기반 무한 스크롤 및 가상화를 지원하는 테이블 컴포넌트
@@ -160,6 +183,9 @@ function VirtualDataTableComponent<T>({
     colorMode,
     mobile,
     scrollParent,
+    columnResize,
+    columnWidths,
+    onColumnWidthsChange,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
@@ -575,17 +601,98 @@ function VirtualDataTableComponent<T>({
     // 고정 줄(pinnedRows)은 머리 안에 그리는데 머리 내용이 줄 부품보다 먼저 만들어진다 — 줄 부품은 ref 로 늦게 잡는다.
     const rowComponentRef = useRef<React.ComponentType<any> | null>(null);
 
+    // 열 폭 끌어 바꾸기(1.8.0) — 폰 목록은 칸 하나라 열 폭이 없어 손잡이도 바꾼 폭도 쓰지 않는다.
+    const resizeConfig = columnResize === true ? {} : columnResize || null;
+    const resizeOn = Boolean(resizeConfig) && !mobileList;
+    const resizeMinDefault = resizeConfig?.minWidth ?? 48;
+    // 놓은 뒤 소비처가 새 폭을 넘겨 줄 때까지 쥐는 값 — 저장이 늦어도 놓은 폭이 옛 폭으로 튀지 않게. 소비처가 폭을 넘기지 않으면 이것이 곧 표 안 기억이다.
+    const [localWidths, setLocalWidths] = useState<VDTColumnWidths | null>(null);
+    useEffect(() => {
+        setLocalWidths(null);
+    }, [columnWidths]);
+    const activeWidths: VDTColumnWidths = resizeOn ? (localWidths ?? columnWidths ?? EMPTY_WIDTHS) : EMPTY_WIDTHS;
+    const activeWidthsRef = useRef(activeWidths);
+    activeWidthsRef.current = activeWidths;
+    const onColumnWidthsChangeRef = useRef(onColumnWidthsChange);
+    onColumnWidthsChangeRef.current = onColumnWidthsChange;
+    const tableBoxRef = useRef<HTMLDivElement | null>(null);
+
+    /**
+     * 바꾼 폭 → 표 상자의 CSS 변수. 칸 폭은 --vdt-cw-열순번, 표 최소 폭은 --vdt-tmin, 모든 열 폭이 정해졌으면 표 폭 --vdt-tw.
+     * 표 폭을 100% 로 두면 모든 열이 숫자일 때 남는 폭이 열마다 나눠져 끈 폭과 그려진 폭이 어긋난다 — 그때는 표를 열 폭 합으로 세운다.
+     * 남는 폭을 갖는 열(width 없음)이 있으면 표 최소 폭에 그 열의 최소 폭을 넣는다 — 옆 열을 넓히다 0 으로 접히지 않게.
+     */
+    const computeResizeVars = useCallback(
+        (widths: VDTColumnWidths): Record<string, string> => {
+            const vars: Record<string, string> = {};
+            let changed = false;
+            let allFixed = true;
+            let minSum = 0;
+            let fixedSum = 0;
+            columns.forEach((col, index) => {
+                const w = widths[String(col.id)];
+                if (typeof w === "number" && Number.isFinite(w) && w > 0) {
+                    const cw = Math.max(col.minWidth ?? resizeMinDefault, Math.round(w));
+                    vars[`--vdt-cw-${index}`] = `${cw}px`;
+                    changed = true;
+                    minSum += cw;
+                    fixedSum += cw;
+                } else if (typeof col.width === "number") {
+                    minSum += col.width;
+                    fixedSum += col.width;
+                } else {
+                    allFixed = false;
+                    minSum += col.minWidth ?? resizeMinDefault;
+                }
+            });
+            if (changed) {
+                vars["--vdt-tmin"] = `${minSum}px`;
+                if (allFixed) vars["--vdt-tw"] = `${fixedSum}px`;
+            }
+            return vars;
+        },
+        [columns, resizeMinDefault],
+    );
+    const computeResizeVarsRef = useRef(computeResizeVars);
+    computeResizeVarsRef.current = computeResizeVars;
+    const resizeVars = useMemo(
+        () => (resizeOn ? computeResizeVars(activeWidths) : null),
+        [resizeOn, computeResizeVars, activeWidths],
+    );
+
+    /**
+     * 칸 폭 style. 끌어 바꾸기를 켜면 표 상자의 CSS 변수를 먼저 본다 — 끄는 동안 칸을 다시 그리지 않고 변수 하나로 머리 · 본문 · 합계 칸이 함께 바뀐다.
+     * 변수가 없으면 원래 폭(없으면 auto)이다.
+     */
+    const colWidthStyle = useCallback(
+        (col: DataColumn<T>, index: number, minWidth: string | number | undefined): React.CSSProperties => {
+            if (!resizeOn) return { width: col.width, minWidth };
+            const name = `--vdt-cw-${index}`;
+            const w = cssPx(col.width);
+            const m = cssPx(minWidth);
+            return {
+                width: w !== undefined ? `var(${name}, ${w})` : `var(${name})`,
+                minWidth: m !== undefined ? `var(${name}, ${m})` : `var(${name})`,
+            };
+        },
+        [resizeOn],
+    );
+
     // 고정 열(pinned: "left")이 붙을 왼쪽 자리 — 앞쪽 고정 열 폭의 합. 고정 열이 아니면 없다.
+    // 끌어 바꾸기를 켜면 앞 열 폭이 CSS 변수라 합도 calc 로 둔다.
     const pinnedLeft = useMemo(() => {
-        const map = new Map<string, number>();
+        const map = new Map<string, number | string>();
         let left = 0;
-        columns.forEach((col) => {
+        const parts: string[] = [];
+        columns.forEach((col, index) => {
             if (col.pinned !== "left") return;
-            map.set(String(col.id), left);
-            left += typeof col.width === "number" ? col.width : 0;
+            map.set(String(col.id), resizeOn && parts.length > 0 ? `calc(${parts.join(" + ")})` : left);
+            const w = typeof col.width === "number" ? col.width : 0;
+            left += w;
+            parts.push(`var(--vdt-cw-${index}, ${w}px)`);
         });
         return map;
-    }, [columns]);
+    }, [columns, resizeOn]);
     // 표 최소 폭 — minWidth 를 준 열이 있을 때만. 열마다 width(숫자) 또는 minWidth 의 합이고, 틀이 좁으면 가로로 민다.
     const tableMinWidth = useMemo(() => {
         if (!columns.some((col) => typeof col.minWidth === "number")) return undefined;
@@ -692,6 +799,104 @@ function VirtualDataTableComponent<T>({
             setHeaderMenu({ colId: String(col.id), x: event.clientX, y: rect.bottom });
         },
         [],
+    );
+
+    /**
+     * 열 폭 끌기 시작(1.8.0). 머리 칸의 끌어 옮기기(draggable) · 글자 고르기 · 정렬 클릭이 함께 시작되지 않게 여기서 끊는다.
+     * 시작 폭은 그려진 칸 폭을 잰다 — 폭을 비운 열 · % 열도 지금 보이는 폭에서 이어 간다.
+     */
+    const handleResizeMouseDown = useCallback(
+        (col: DataColumn<T>, event: React.MouseEvent<HTMLElement>) => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const handle = event.currentTarget;
+            const th = handle.closest("th");
+            const box = tableBoxRef.current;
+            if (!th || !box) return;
+            const cs = window.getComputedStyle(th);
+            const extra =
+                cs.boxSizing === "border-box"
+                    ? 0
+                    : (parseFloat(cs.paddingLeft) || 0) +
+                      (parseFloat(cs.paddingRight) || 0) +
+                      (parseFloat(cs.borderLeftWidth) || 0) +
+                      (parseFloat(cs.borderRightWidth) || 0);
+            const startWidth = th.getBoundingClientRect().width - extra;
+            const startX = event.clientX;
+            const key = String(col.id);
+            const min = col.minWidth ?? resizeMinDefault;
+            const base = activeWidthsRef.current;
+            let next = base;
+            let moved = false;
+            let raf = 0;
+            handle.setAttribute("data-active", "");
+            // 끄는 동안 손이 칸 밖으로 나가도 커서가 바뀌지 않게
+            const prevCursor = document.body.style.cursor;
+            document.body.style.cursor = "col-resize";
+            const onMove = (ev: MouseEvent) => {
+                const dx = ev.clientX - startX;
+                if (!moved && Math.abs(dx) < RESIZE_DRAG_THRESHOLD_PX) return;
+                moved = true;
+                next = { ...base, [key]: Math.max(min, Math.round(startWidth + dx)) };
+                if (!raf) {
+                    raf = requestAnimationFrame(() => {
+                        raf = 0;
+                        applyResizeVars(box, computeResizeVarsRef.current(next));
+                    });
+                }
+            };
+            const onUp = () => {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                if (raf) cancelAnimationFrame(raf);
+                handle.removeAttribute("data-active");
+                document.body.style.cursor = prevCursor;
+                if (!moved) return;
+                applyResizeVars(box, computeResizeVarsRef.current(next));
+                // 놓은 자리의 click 이 머리 칸(정렬 · 소비처 머리 클릭)으로 가지 않게 한 번 삼킨다 — click 은 mouseup 바로 뒤 같은 차례에 온다.
+                const swallow = (ce: MouseEvent) => {
+                    ce.stopPropagation();
+                    ce.preventDefault();
+                };
+                window.addEventListener("click", swallow, true);
+                window.setTimeout(() => window.removeEventListener("click", swallow, true), 0);
+                setLocalWidths(next);
+                onColumnWidthsChangeRef.current?.(next);
+            };
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        },
+        [resizeMinDefault],
+    );
+
+    /** 경계 두 번 누르기 — 그 열을 처음 폭(column.width)으로. 바꾼 적 없는 열이면 아무것도 하지 않는다. */
+    const handleResizeDoubleClick = useCallback((col: DataColumn<T>, event: React.MouseEvent<HTMLElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = String(col.id);
+        const base = activeWidthsRef.current;
+        if (!(key in base)) return;
+        const next = { ...base };
+        delete next[key];
+        setLocalWidths(next);
+        onColumnWidthsChangeRef.current?.(next);
+    }, []);
+
+    /** 머리 칸 오른쪽 경계의 손잡이 — 모양(호버 때 얇은 선)은 표 상자 sx 의 [data-vdt-resize] 가 정한다. */
+    const renderResizeHandle = useCallback(
+        (col: DataColumn<T>) =>
+            resizeOn ? (
+                <span
+                    data-vdt-resize=""
+                    aria-hidden
+                    onMouseDown={(e) => handleResizeMouseDown(col, e)}
+                    onDoubleClick={(e) => handleResizeDoubleClick(col, e)}
+                    // 손잡이 클릭이 머리 칸 클릭(소비처 headerProps.onClick)으로 번지지 않게
+                    onClick={(e) => e.stopPropagation()}
+                />
+            ) : null,
+        [resizeOn, handleResizeMouseDown, handleResizeDoubleClick],
     );
 
     /** 머리글 — 거를 수 있는 열은 거르기 아이콘을 붙이고, 걸려 있으면 강조색으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */
@@ -872,7 +1077,7 @@ function VirtualDataTableComponent<T>({
             // 단일 행 헤더
             return (
                 <MuiTableRow>
-                    {columns.map((col) => (
+                    {columns.map((col, colIndex) => (
                         <TableCell
                             key={String(col.id)}
                             align={col.align || "left"}
@@ -881,8 +1086,7 @@ function VirtualDataTableComponent<T>({
                             {...col.headerProps}
                             onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                             style={{
-                                width: col.width,
-                                minWidth: col.width ?? col.minWidth,
+                                ...colWidthStyle(col, colIndex, col.width ?? col.minWidth),
                                 ...col.style,
                                 fontWeight: "bold",
                                 position: "sticky",
@@ -971,6 +1175,7 @@ function VirtualDataTableComponent<T>({
                             ) : (
                                 renderHeaderText(col)
                             )}
+                            {renderResizeHandle(col)}
                         </TableCell>
                     ))}
                 </MuiTableRow>
@@ -989,8 +1194,7 @@ function VirtualDataTableComponent<T>({
                     {...col.headerProps}
                     onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                     style={{
-                        width: col.width,
-                        minWidth: col.width,
+                        ...colWidthStyle(col, columns.indexOf(col), col.width),
                         ...col.style,
                         fontWeight: "bold",
                         position: "sticky",
@@ -1080,6 +1284,7 @@ function VirtualDataTableComponent<T>({
                     ) : (
                         renderHeaderText(col)
                     )}
+                    {renderResizeHandle(col)}
                 </TableCell>
             )),
             ...Object.entries(groupMap).map(([group, cols]) => (
@@ -1113,8 +1318,7 @@ function VirtualDataTableComponent<T>({
                         {...col.headerProps}
                         onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                         style={{
-                            width: col.width,
-                            minWidth: col.width,
+                            ...colWidthStyle(col, columns.indexOf(col), col.width),
                             ...col.style,
                             fontWeight: "bold",
                             position: "sticky",
@@ -1204,6 +1408,7 @@ function VirtualDataTableComponent<T>({
                         ) : (
                             renderHeaderText(col)
                         )}
+                        {renderResizeHandle(col)}
                     </TableCell>
                 )),
         ];
@@ -1214,7 +1419,7 @@ function VirtualDataTableComponent<T>({
                 <MuiTableRow>{secondRowCells}</MuiTableRow>
             </>
         );
-    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle, handleHeaderContextMenu, renderHeaderText]);
+    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle, handleHeaderContextMenu, renderHeaderText, colWidthStyle, renderResizeHandle]);
 
     /**
      * 테이블 행 컨텐츠 렌더링 함수 (기존 VirtualDataTable 스타일)
@@ -1391,7 +1596,7 @@ function VirtualDataTableComponent<T>({
                         }
                         style={{
                             // 합친 칸은 폭을 박지 않는다 — 열 폭은 머리 줄이 정하고, 박으면 합친 폭이 한 열 폭으로 줄어든다.
-                            ...(colSpan > 1 ? {} : { width: column.width, minWidth: column.width ?? column.minWidth }),
+                            ...(colSpan > 1 ? {} : colWidthStyle(column, columnIndex, column.width ?? column.minWidth)),
                             ...(column.primary ? { fontSize: 15 } : {}),
                             ...column.style,
                             ...(column.cellStyle ? column.cellStyle(item, index) : {}),
@@ -1416,7 +1621,7 @@ function VirtualDataTableComponent<T>({
 
             return <>{cells}</>;
         },
-        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow],
+        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow, colWidthStyle],
     );
 
     /**
@@ -1458,8 +1663,8 @@ function VirtualDataTableComponent<T>({
                                 }}
                             >
                                 <colgroup>
-                                    {columns.map((col) => (
-                                        <col key={String(col.id)} style={{ width: col.width, minWidth: col.width ?? col.minWidth }} />
+                                    {columns.map((col, colIndex) => (
+                                        <col key={String(col.id)} style={colWidthStyle(col, colIndex, col.width ?? col.minWidth)} />
                                     ))}
                                 </colgroup>
                                 <MuiTableBody>
@@ -1482,7 +1687,7 @@ function VirtualDataTableComponent<T>({
                 </tr>
             </>
         );
-    }, [headerRowsContent, pinnedRows, pinnedRowsMaxHeight, pinnedRowsSx, columns, rowContent, tableLayout, getRowId, notion, notionTokens]);
+    }, [headerRowsContent, pinnedRows, pinnedRowsMaxHeight, pinnedRowsSx, columns, rowContent, tableLayout, getRowId, notion, notionTokens, colWidthStyle]);
 
     // 컬럼에 footer 렌더러가 하나라도 있거나 showFooter 가 명시되면 하단 합계 행을 표시한다.
     const hasFooter =
@@ -1516,7 +1721,7 @@ function VirtualDataTableComponent<T>({
                         // 병합 시 너비 고정을 풀어 colSpan 이 실제로 늘어나게 한다.
                         ...(colSpan > 1
                             ? {}
-                            : { width: col.width, minWidth: col.width }),
+                            : colWidthStyle(col, i, col.width)),
                         ...col.style,
                         fontWeight: "bold",
                         // 노션풍은 본문 칸과 같은 좌우 여백 · 세로 0(줄 높이로 가운데) — 16px 이면 합계 줄만 높고 글자가 칸과 어긋났다.
@@ -1532,7 +1737,7 @@ function VirtualDataTableComponent<T>({
         }
 
         return <MuiTableRow>{cells}</MuiTableRow>;
-    }, [hasFooter, columns, data, notion]);
+    }, [hasFooter, columns, data, notion, colWidthStyle]);
 
     // 테이블 컴포넌트 정의 (기존 VirtualDataTable 스타일)
     const VirtuosoTableComponents: TableComponents<T> = useMemo(
@@ -1548,7 +1753,12 @@ function VirtualDataTableComponent<T>({
                         borderCollapse: "separate",
                         tableLayout,
                         // 폰 목록은 칸 하나라 열 폭 합(최소 폭)을 두지 않는다 — 두면 화면 밖으로 밀린다
-                        ...(tableMinWidth && !mobileList ? { minWidth: tableMinWidth } : {}),
+                        // 끌어 바꾸기를 켜면 표 폭 · 최소 폭도 표 상자의 CSS 변수를 본다(끄는 동안 부품을 다시 만들지 않게).
+                        ...(resizeOn
+                            ? { width: "var(--vdt-tw, 100%)", minWidth: `var(--vdt-tmin, ${tableMinWidth ?? 0}px)` }
+                            : tableMinWidth && !mobileList
+                              ? { minWidth: tableMinWidth }
+                              : {}),
                         // 틀 없이 그릴 때는 오른쪽 덧여백이 가로 넘침(가로 막대)을 만든다 — 표가 상자 폭에 꼭 맞게 둔다.
                         marginRight: framed ? "16px" : 0,
                         // 하단 합계 행이 있으면 데이터가 적어도 테이블이 컨테이너를 채우게 한다.
@@ -1852,6 +2062,7 @@ function VirtualDataTableComponent<T>({
             tableMinWidth,
             mobileList,
             external,
+            resizeOn,
         ],
     );
     rowComponentRef.current = (VirtuosoTableComponents as Record<string, unknown>).TableRow as React.ComponentType<any>;
@@ -1911,6 +2122,9 @@ function VirtualDataTableComponent<T>({
     // 공통 테이블 내용
     const tableContent = (
         <Box
+            ref={tableBoxRef}
+            // 바꾼 열 폭(1.8.0) — 칸 · 표 폭이 이 변수를 본다
+            style={resizeVars ?? undefined}
             sx={
                 {
                     position: "relative",
@@ -1926,6 +2140,32 @@ function VirtualDataTableComponent<T>({
                     },
                     // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
                     ...(selectedRowCssSx ?? {}),
+                    // 열 폭 손잡이(1.8.0) — 머리 칸(sticky 라 자리 기준이 된다) 오른쪽 끝 7px. 선은 호버 · 끄는 동안만 보인다(평소에 그으면 칸 사이 세로선이 두 겹이다).
+                    ...(resizeOn
+                        ? {
+                              "& thead th [data-vdt-resize]": {
+                                  position: "absolute",
+                                  top: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  width: "7px",
+                                  cursor: "col-resize",
+                                  zIndex: 1,
+                                  "&::after": {
+                                      content: '""',
+                                      position: "absolute",
+                                      top: 0,
+                                      bottom: 0,
+                                      right: 0,
+                                      width: "2px",
+                                      backgroundColor: notion ? notionTokens.selectedBar : muiTheme.palette.primary.main,
+                                      opacity: 0,
+                                      transition: "opacity 0.12s ease",
+                                  },
+                                  "&:hover::after, &[data-active]::after": { opacity: 1 },
+                              },
+                          }
+                        : {}),
                     // 고정 열 칸은 뒤로 지나가는 칸을 가려야 해 바탕을 칠한다. 줄 호버 색은 줄(tr)에 칠해지므로 고정 칸에도 같은 색을 준다.
                     "& tbody td[data-vdt-pinned]": {
                         backgroundColor: notion

@@ -154,6 +154,9 @@ function App() {
     colorMode={"light" | "dark"}            // notion colors independent of the MUI palette mode
     mobile={boolean | { query?, renderRow? }} // 1.6.0 card list on narrow screens (see "Mobile list")
     scrollParent={HTMLElement | null}         // 1.7.0 virtualize against an outer (page) scroller
+    columnResize={boolean | { minWidth? }}    // 1.8.0 drag the header's right edge to resize a column (see "Column resize")
+    columnWidths={Record<string, number>}     // 1.8.0 resized widths by column id (you store them)
+    onColumnWidthsChange={(widths) => void}   // 1.8.0 fired once on release / on double-click reset
 
     // Optional - 1.4.0 header context menu (right-click on th never shows the browser menu)
     onSortClear={() => void}                // adds "정렬 풀기" to the header menu (and re-picking the active direction clears)
@@ -242,6 +245,29 @@ string `emptyMessage` = one light grey line under the header, footer cells use t
 `scrollParent={element}` virtualizes against an outer scroller (react-virtuoso `customScrollParent`) — the table has no scroller of its own
 and grows with the page, so things bound to the page scroller (collapsing app bar, scroll-to-top, pull-to-refresh) keep working.
 Pass `null` while the element is not known yet (nothing is drawn until then). Works with `mobile` and `onEndReached`.
+
+### Column resize (1.8.0)
+
+`columnResize` puts a grip on each header cell's right edge (`col-resize` cursor, a thin line on hover). Drag it to resize that column,
+double-click it to go back to the column's own `width`. The table does not store anything — keep the widths where you like
+(account settings, localStorage …) and pass them back with `columnWidths`. Without `columnWidths` the table only remembers them until it remounts.
+
+```tsx
+const [widths, setWidths] = useAccountSetting("customer.list"); // Record<columnId, px>
+<VirtualDataTable
+    columnResize                              // or { minWidth: 60 } — default minimum 48px (a column's own minWidth wins)
+    columnWidths={isPhone ? undefined : widths}
+    onColumnWidthsChange={setWidths}          // once on release; double-click → the key is removed
+    ...
+/>
+```
+
+- While dragging only CSS variables on the table box change — rows are not re-rendered, virtualization and horizontal scroll stay as they are.
+- The click that follows a drag is swallowed, so releasing over a header never sorts / opens the header menu.
+- A flexible column (no `width`) keeps a minimum of its `minWidth` (or the resize minimum) once anything was resized; when every column ends up
+  with a pixel width the table is as wide as their sum (no stretching that would make drawn widths differ from the dragged ones).
+- Works with `pinned: "left"` (sticky offsets follow), `autoHeight`, `framed`, `tableLayout`, `variant="notion"`, `pinnedRows`, footer.
+  In the `mobile` card list there is no grip and `columnWidths` is ignored.
 
 ### Mobile list (1.6.0)
 
