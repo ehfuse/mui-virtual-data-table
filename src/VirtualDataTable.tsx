@@ -76,6 +76,19 @@ function cssPx(value: string | number | undefined): string | undefined {
     return typeof value === "number" ? `${value}px` : value;
 }
 
+/** 머리 칸의 폭(style width 기준) — content-box 칸이면 그려진 폭에서 안쪽 여백 · 테두리를 뺀다. */
+function headerCellWidth(th: HTMLElement): number {
+    const cs = window.getComputedStyle(th);
+    const extra =
+        cs.boxSizing === "border-box"
+            ? 0
+            : (parseFloat(cs.paddingLeft) || 0) +
+              (parseFloat(cs.paddingRight) || 0) +
+              (parseFloat(cs.borderLeftWidth) || 0) +
+              (parseFloat(cs.borderRightWidth) || 0);
+    return th.getBoundingClientRect().width - extra;
+}
+
 /**
  * 표 상자에 얹은 CSS 변수(--vdt-*)를 vars 대로 맞춘다(없는 이름은 뗀다). 끄는 동안 React 상태를 바꾸면 표 부품이 다시 만들어져
  * 가상 목록 줄까지 다시 그리므로, 끄는 동안은 변수만 바꾸고 놓을 때 한 번 상태로 옮긴다.
@@ -615,6 +628,8 @@ function VirtualDataTableComponent<T>({
     activeWidthsRef.current = activeWidths;
     const onColumnWidthsChangeRef = useRef(onColumnWidthsChange);
     onColumnWidthsChangeRef.current = onColumnWidthsChange;
+    const columnsRef = useRef(columns);
+    columnsRef.current = columns;
     const tableBoxRef = useRef<HTMLDivElement | null>(null);
 
     /**
@@ -814,19 +829,25 @@ function VirtualDataTableComponent<T>({
             const th = handle.closest("th");
             const box = tableBoxRef.current;
             if (!th || !box) return;
-            const cs = window.getComputedStyle(th);
-            const extra =
-                cs.boxSizing === "border-box"
-                    ? 0
-                    : (parseFloat(cs.paddingLeft) || 0) +
-                      (parseFloat(cs.paddingRight) || 0) +
-                      (parseFloat(cs.borderLeftWidth) || 0) +
-                      (parseFloat(cs.borderRightWidth) || 0);
-            const startWidth = th.getBoundingClientRect().width - extra;
+            const startWidth = headerCellWidth(th);
             const startX = event.clientX;
             const key = String(col.id);
             const min = col.minWidth ?? resizeMinDefault;
-            const base = activeWidthsRef.current;
+            let base = activeWidthsRef.current;
+            // 남는 폭을 갖는 열(width 없음)이 없는 표는 브라우저가 남는 폭을 모든 열에 나눠 그린다. 한 열을 바꾸면 표가 열 폭 합으로 서면서
+            // 다른 열이 모두 선언 폭으로 움찔 줄었다(1.8.1) — 그래서 지금 그려진 폭을 모든 열의 폭으로 붙잡고 시작한다.
+            const cols = columnsRef.current;
+            const hasFlex = cols.some((c) => !(String(c.id) in base) && typeof c.width !== "number");
+            if (!hasFlex) {
+                const snap: VDTColumnWidths = { ...base };
+                box.querySelectorAll<HTMLElement>("thead th [data-vdt-col]").forEach((h) => {
+                    const c = cols[Number(h.getAttribute("data-vdt-col"))];
+                    const cell = h.closest("th");
+                    if (!c || !cell || String(c.id) in snap) return;
+                    snap[String(c.id)] = Math.round(headerCellWidth(cell));
+                });
+                base = snap;
+            }
             let next = base;
             let moved = false;
             let raf = 0;
@@ -870,15 +891,32 @@ function VirtualDataTableComponent<T>({
         [resizeMinDefault],
     );
 
-    /** 경계 두 번 누르기 — 그 열을 처음 폭(column.width)으로. 바꾼 적 없는 열이면 아무것도 하지 않는다. */
+    /**
+     * 경계 두 번 누르기 — 그 열을 처음 폭으로. 바꾼 적 없는 열이면 아무것도 하지 않는다.
+     * 남는 폭을 갖는 열이 없는 표는 첫 끌기 때 모든 열 폭을 붙잡았으므로(handleResizeMouseDown) 키만 빼면 선언 폭(늘어나기 전)으로 줄어든다 —
+     * 처음 화면에서 늘어나 있던 폭(선언 폭 × 틀 폭 / 선언 폭 합)으로 되돌리고, 모든 열이 그 폭이면 바꾼 폭을 통째로 비운다(처음 상태).
+     */
     const handleResizeDoubleClick = useCallback((col: DataColumn<T>, event: React.MouseEvent<HTMLElement>) => {
         event.preventDefault();
         event.stopPropagation();
         const key = String(col.id);
         const base = activeWidthsRef.current;
         if (!(key in base)) return;
-        const next = { ...base };
+        let next: VDTColumnWidths = { ...base };
         delete next[key];
+        const cols = columnsRef.current;
+        const table = tableBoxRef.current?.querySelector("table");
+        const parent = table?.parentElement;
+        if (table && parent && cols.every((c) => typeof c.width === "number")) {
+            const declaredSum = cols.reduce((sum, c) => sum + (c.width as number), 0);
+            // 표는 width 100% 라 부모 폭을 그대로 받는다(오른쪽 덧여백은 폭을 줄이지 않고 바깥으로 붙는다).
+            const avail = parent.clientWidth;
+            const scale = declaredSum > 0 ? Math.max(1, avail / declaredSum) : 1;
+            const initial = (c: DataColumn<T>) => Math.round((c.width as number) * scale);
+            if (scale > 1) next[key] = initial(col);
+            // 모두 처음 폭이면 붙잡은 폭을 다 비운다 — 저장된 값 없이 처음 그대로 그리게(틀 폭이 바뀌면 다시 늘어난다).
+            if (cols.every((c) => !(String(c.id) in next) || Math.abs(next[String(c.id)] - initial(c)) <= 1)) next = {};
+        }
         setLocalWidths(next);
         onColumnWidthsChangeRef.current?.(next);
     }, []);
@@ -889,6 +927,7 @@ function VirtualDataTableComponent<T>({
             resizeOn ? (
                 <span
                     data-vdt-resize=""
+                    data-vdt-col={columns.indexOf(col)}
                     aria-hidden
                     onMouseDown={(e) => handleResizeMouseDown(col, e)}
                     onDoubleClick={(e) => handleResizeDoubleClick(col, e)}
@@ -896,7 +935,7 @@ function VirtualDataTableComponent<T>({
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : null,
-        [resizeOn, handleResizeMouseDown, handleResizeDoubleClick],
+        [resizeOn, handleResizeMouseDown, handleResizeDoubleClick, columns],
     );
 
     /** 머리글 — 거를 수 있는 열은 거르기 아이콘을 붙이고, 걸려 있으면 강조색으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */

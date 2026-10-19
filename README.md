@@ -266,6 +266,7 @@ const [widths, setWidths] = useAccountSetting("customer.list"); // Record<column
 - The click that follows a drag is swallowed, so releasing over a header never sorts / opens the header menu.
 - A flexible column (no `width`) keeps a minimum of its `minWidth` (or the resize minimum) once anything was resized; when every column ends up
   with a pixel width the table is as wide as their sum (no stretching that would make drawn widths differ from the dragged ones).
+  If no column is flexible, the first drag captures every column's drawn width (1.8.1) so the other columns do not jump.
 - Works with `pinned: "left"` (sticky offsets follow), `autoHeight`, `framed`, `tableLayout`, `variant="notion"`, `pinnedRows`, footer.
   In the `mobile` card list there is no grip and `columnWidths` is ignored.
 
