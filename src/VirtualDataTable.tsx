@@ -1173,6 +1173,7 @@ function VirtualDataTableComponent<T>({
                                 >
                                     <Box
                                         className="vdt-sort-box"
+                                        data-align={col.align || "left"}
                                         sx={{
                                             position: "relative",
                                             cursor: "default",
@@ -1281,6 +1282,7 @@ function VirtualDataTableComponent<T>({
                         >
                             <Box
                                 className="vdt-sort-box"
+                                        data-align={col.align || "left"}
                                 sx={{
                                     position: "relative",
                                     cursor: "default",
@@ -1405,6 +1407,7 @@ function VirtualDataTableComponent<T>({
                             >
                                 <Box
                                     className="vdt-sort-box"
+                                        data-align={col.align || "left"}
                                     sx={{
                                         position: "relative",
                                         cursor: "default",
@@ -2310,8 +2313,10 @@ function VirtualDataTableComponent<T>({
                               "& thead > tr > th > *": { maxWidth: "100%" },
                               // 정렬 화살표는 머리글 오른쪽 밖(left: 100%)에 떠 있어, 오른쪽 맞춤 칸에서는 칸 여백(14px)을 넘어 위의 overflow 에 잘렸다(합계 칸).
                               // 노션풍은 화살표 자리를 머리글 상자 안에 두고(오른쪽 20px) 화살표를 그 자리 끝에 세운다.
-                              "& thead .vdt-sort-box": { paddingRight: "20px" },
-                              "& thead .vdt-sort-box > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
+                              // 가운데 맞춤 칸은 예외(1.9.1, 2026-10-22) — 자리를 안에 두면 글자+화살표 묶음이 가운데에 서서 글자가 왼쪽으로 10px 밀렸다.
+                              // 가운데 칸은 양옆이 비어 화살표가 밖(left: 100%)에 떠도 잘리지 않으니 글자를 칸 한가운데에 둔다.
+                              "& thead .vdt-sort-box:not([data-align='center'])": { paddingRight: "20px" },
+                              "& thead .vdt-sort-box:not([data-align='center']) > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
