@@ -51,6 +51,7 @@ import {
     type Theme,
 } from "@mui/material";
 import { TableVirtuoso } from "react-virtuoso";
+import { REORDER_COLUMN_ID, useRowReorder } from "./rowReorder";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 import { CssSpinner } from "./CssSpinner";
@@ -148,7 +149,7 @@ function hasColumnFilter<T>(col: DataColumn<T>): boolean {
 function VirtualDataTableComponent<T>({
     data,
     loading = false,
-    columns,
+    columns: columnsProp,
     onRowClick,
     getRowId,
     selectedRowId,
@@ -199,6 +200,7 @@ function VirtualDataTableComponent<T>({
     columnResize,
     columnWidths,
     onColumnWidthsChange,
+    rowReorder,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
@@ -215,6 +217,22 @@ function VirtualDataTableComponent<T>({
     const mobileConfig = mobile === true ? {} : mobile || null;
     const mobileMatch = useMediaQuery(mobileConfig?.query ?? DEFAULT_MOBILE_QUERY, { noSsr: true });
     const mobileList = Boolean(mobileConfig) && mobileMatch;
+    // 줄 끌어 옮기기(1.9.0) — 손잡이 열을 맨 앞에 끼운다. 표 상자 · 굴리는 요소 ref 는 아래에서 채워진다(끄는 동안에만 읽는다)
+    const reorderBoxRef = useRef<HTMLDivElement | null>(null);
+    const reorderScrollerRef = useRef<() => HTMLElement | null>(() => null);
+    const dataLengthRef = useRef(data.length);
+    dataLengthRef.current = data.length;
+    const reorder = useRowReorder<T>({
+        config: rowReorder,
+        tableBoxRef: reorderBoxRef,
+        getScroller: () => reorderScrollerRef.current(),
+        dataLengthRef,
+        anyPinned: columnsProp.some((c) => c.pinned === "left"),
+    });
+    const columns = useMemo(
+        () => (reorder.handleColumn ? [reorder.handleColumn, ...columnsProp] : columnsProp),
+        [reorder.handleColumn, columnsProp],
+    );
     // 바깥 스크롤(1.7.0) — 페이지가 굴리고 표는 그 스크롤에 맞춰 보이는 줄만 그린다(높이는 내용만큼)
     const external = Boolean(scrollParent);
     // 높이를 내용에 맡기는가 — autoHeight(가상화 없음) · 바깥 스크롤(가상화 있음)
@@ -631,6 +649,8 @@ function VirtualDataTableComponent<T>({
     const columnsRef = useRef(columns);
     columnsRef.current = columns;
     const tableBoxRef = useRef<HTMLDivElement | null>(null);
+    // 끌어 옮기기(1.9.0)의 자동 스크롤이 굴릴 요소 — 바깥 스크롤이면 그것, 아니면 표의 스크롤러(autoHeight 는 null → 가까운 굴리는 조상 · 문서)
+    reorderScrollerRef.current = () => (external ? (scrollParent as HTMLElement | null) : autoHeight ? null : scrollerElRef.current);
 
     /**
      * 바꾼 폭 → 표 상자의 CSS 변수. 칸 폭은 --vdt-cw-열순번, 표 최소 폭은 --vdt-tmin, 모든 열 폭이 정해졌으면 표 폭 --vdt-tw.
@@ -924,7 +944,7 @@ function VirtualDataTableComponent<T>({
     /** 머리 칸 오른쪽 경계의 손잡이 — 모양(호버 때 얇은 선)은 표 상자 sx 의 [data-vdt-resize] 가 정한다. */
     const renderResizeHandle = useCallback(
         (col: DataColumn<T>) =>
-            resizeOn ? (
+            resizeOn && col.id !== REORDER_COLUMN_ID ? (
                 <span
                     data-vdt-resize=""
                     data-vdt-col={columns.indexOf(col)}
@@ -1550,9 +1570,18 @@ function VirtualDataTableComponent<T>({
 
             // 폰 목록 — 모든 열을 합친 칸 하나에 카드(머리 줄이 없어 열 폭은 의미가 없다)
             if (mobileList) {
+                const card = renderMobileRow(item, index);
                 return (
                     <TableCell colSpan={columns.length} data-vdt-pad="" sx={{ padding: 0 }}>
-                        {renderMobileRow(item, index)}
+                        {reorder.on ? (
+                            // 끌어 옮기기(1.9.0) — 카드 왼쪽에 손잡이. 카드 자체의 여백은 그대로다
+                            <Box sx={{ display: "flex", alignItems: "stretch", minWidth: 0 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", pl: "6px", flexShrink: 0 }}>{reorder.renderHandle(item, index)}</Box>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>{card}</Box>
+                            </Box>
+                        ) : (
+                            card
+                        )}
                     </TableCell>
                 );
             }
@@ -1660,7 +1689,7 @@ function VirtualDataTableComponent<T>({
 
             return <>{cells}</>;
         },
-        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow, colWidthStyle],
+        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow, colWidthStyle, reorder.on, reorder.renderHandle],
     );
 
     /**
@@ -2161,7 +2190,10 @@ function VirtualDataTableComponent<T>({
     // 공통 테이블 내용
     const tableContent = (
         <Box
-            ref={tableBoxRef}
+            ref={(el: HTMLDivElement | null) => {
+                tableBoxRef.current = el;
+                reorderBoxRef.current = el;
+            }}
             // 바꾼 열 폭(1.8.0) — 칸 · 표 폭이 이 변수를 본다
             style={resizeVars ?? undefined}
             sx={
@@ -2169,6 +2201,32 @@ function VirtualDataTableComponent<T>({
                     position: "relative",
                     height: sizeAuto ? "auto" : "100%",
                     width: "100%",
+                    // 줄 끌어 옮기기(1.9.0) — 손잡이 · 끌던 줄 흐리게 · 놓을 자리 선. 줄 DOM 은 속성만 바뀌고 React 는 다시 그리지 않는다
+                    ...(reorder.on
+                        ? {
+                              "& .vdt-reorder-handle": {
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 28,
+                                  height: 28,
+                                  padding: 0,
+                                  border: 0,
+                                  borderRadius: "4px",
+                                  background: "none",
+                                  color: notion ? notionTokens.headerColor : muiTheme.palette.text.secondary,
+                                  cursor: "grab",
+                                  touchAction: "none",
+                                  "&:hover": { color: muiTheme.palette.text.primary, backgroundColor: notion ? notionTokens.hoverBg : "rgba(0,0,0,.06)" },
+                                  "&:disabled": { opacity: 0.35, cursor: "not-allowed" },
+                                  "&[aria-pressed=\"true\"]": { color: notion ? notionTokens.selectedBar : muiTheme.palette.primary.main, backgroundColor: notion ? notionTokens.selectedBg : "rgba(0,0,0,.06)" },
+                              },
+                              // 머리 안 고정 줄(pinnedRows)은 옮길 수 없다 — 손잡이를 감춘다
+                              "& thead tr[data-vdt-pinned-row] .vdt-reorder-handle": { visibility: "hidden" },
+                              "& tbody tr[data-vdt-dragging] > td": { opacity: 0.45 },
+                              "& [data-vdt-drop-indicator]": { backgroundColor: notion ? notionTokens.selectedBar : muiTheme.palette.primary.main },
+                          }
+                        : {}),
                     "& .MuiTableHead-root": {
                         backgroundColor: (theme: Theme) =>
                             notion
@@ -2287,6 +2345,7 @@ function VirtualDataTableComponent<T>({
                 } as SxProps<Theme>
             }
         >
+            {reorder.indicator}
             {/* 테이블 — autoHeight 면 가상화 없이 모든 줄을 그리고 높이는 내용을 따른다(페이지가 굴린다). */}
             {autoHeight ? (
                 <Box sx={{ overflowX: "auto", width: "100%" }}>

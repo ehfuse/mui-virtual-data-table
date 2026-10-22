@@ -296,4 +296,24 @@ export interface VirtualDataTableProps<T> {
     columnWidths?: VDTColumnWidths;
     /** 열 폭이 바뀌었을 때 — 끌기를 놓을 때 한 번(끄는 동안은 부르지 않는다), 두 번 눌러 되돌리면 그 열 키를 뺀 값으로(1.8.0). */
     onColumnWidthsChange?: (widths: VDTColumnWidths) => void;
+    /**
+     * 줄 끌어 옮기기(1.9.0) — 주면 첫 칸에 손잡이(⋮⋮)가 서고, 끌어 놓으면 onReorder(from, to) 를 부른다. 표는 data 를 바꾸지 않는다 —
+     * 소비처가 바꿔 넘기면 그대로 다시 그린다. 정렬 · 거르기가 걸려 보이는 순서가 저장 순서와 다를 때는 disabledReason 으로 막는다.
+     * 폰 목록(mobile)에서는 카드 왼쪽에 손잡이가 선다. 키보드: 손잡이에 초점 → Space → ↑ ↓ → Space.
+     */
+    rowReorder?: VDTRowReorderConfig<T>;
+}
+
+/** 줄 끌어 옮기기 설정(1.9.0) */
+export interface VDTRowReorderConfig<T> {
+    /** 놓았을 때 — from · to 는 data 안 순번이고 to 는 옮긴 뒤 그 줄이 설 자리(arrayMove(data, from, to) 와 같다). 같은 자리면 부르지 않는다 */
+    onReorder: (from: number, to: number, item: T) => void;
+    /** 이 줄을 끌 수 있나(기본 모두). 끌 수 없는 줄은 손잡이를 그리지 않는다 */
+    canDrag?: (item: T, index: number) => boolean;
+    /** 끌기를 막는 이유(정렬 · 거르기 중 등) — 주면 손잡이를 흐리게 그리고 누를 수 없다. 손잡이 title 로 보인다 */
+    disabledReason?: string;
+    /** 손잡이 열 폭 px(기본 36) */
+    handleWidth?: number;
+    /** 손잡이 aria-label(기본 "순서 옮기기") */
+    handleLabel?: string;
 }

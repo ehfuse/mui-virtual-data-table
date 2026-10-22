@@ -157,6 +157,7 @@ function App() {
     columnResize={boolean | { minWidth? }}    // 1.8.0 drag the header's right edge to resize a column (see "Column resize")
     columnWidths={Record<string, number>}     // 1.8.0 resized widths by column id (you store them)
     onColumnWidthsChange={(widths) => void}   // 1.8.0 fired once on release / on double-click reset
+    rowReorder={{ onReorder, canDrag?, disabledReason?, handleWidth?, handleLabel? }} // 1.9.0 drag rows by a handle (see "Row reorder")
 
     // Optional - 1.4.0 header context menu (right-click on th never shows the browser menu)
     onSortClear={() => void}                // adds "정렬 풀기" to the header menu (and re-picking the active direction clears)
@@ -269,6 +270,30 @@ const [widths, setWidths] = useAccountSetting("customer.list"); // Record<column
   If no column is flexible, the first drag captures every column's drawn width (1.8.1) so the other columns do not jump.
 - Works with `pinned: "left"` (sticky offsets follow), `autoHeight`, `framed`, `tableLayout`, `variant="notion"`, `pinnedRows`, footer.
   In the `mobile` card list there is no grip and `columnWidths` is ignored.
+
+### Row reorder (1.9.0)
+
+`rowReorder` adds a drag handle (⋮⋮) as the first cell. Drag it to move the row; a line shows where it will land and `onReorder(from, to, item)`
+fires on release (`to` is the index the row ends up at — the same as `arrayMove(data, from, to)`). The table never changes `data`;
+reorder it yourself and pass it back.
+
+```tsx
+<VirtualDataTable
+    rowReorder={{
+        onReorder: (from, to) => setRows((r) => arrayMove(r, from, to)),
+        disabledReason: sortBy ? "정렬을 풀면 옮길 수 있어요" : undefined, // handle is dimmed, drag is off
+        canDrag: (row) => !row.locked,                                    // no handle on locked rows
+    }}
+    ...
+/>
+```
+
+- Nothing re-renders while dragging — the dragged row gets a `data-vdt-dragging` attribute (dimmed) and the drop line is a positioned element,
+  so it stays light with virtualization and long lists. Dragging to the edge auto-scrolls (the table scroller, `scrollParent`, or the document).
+- Keyboard: focus the handle → Space (lift) → ↑ / ↓ (moves one step, `onReorder` each time) → Space / Enter / Esc (drop).
+- In the `mobile` card list the handle sits at the left of the card. With `pinned: "left"` columns the handle column is pinned too.
+  Rows in `pinnedRows` cannot be moved. Works with `autoHeight`, `scrollParent`, `variant="notion"`, `columnResize`.
+- Row click still works everywhere except on the handle; the click after a drag is not treated as a row click.
 
 ### Mobile list (1.6.0)
 

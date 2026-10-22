@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.0
+
+### Added
+
+- `rowReorder` — 줄 끌어 옮기기. 첫 칸에 손잡이(⋮⋮)가 서고, 끌어 놓으면 `onReorder(from, to, item)` 를 부른다(표는 data 를 바꾸지 않는다).
+  끄는 동안 놓을 자리에 선을 긋고 끌던 줄은 흐려진다 — 줄 DOM 속성만 바꿔 React 가 다시 그리지 않으니 가상화 · 긴 목록에서도 가볍다.
+  가장자리로 끌면 자동으로 굴린다(표 스크롤 · 바깥 스크롤 · 문서). 키보드: 손잡이에 초점 → Space → ↑ ↓ → Space · Enter · Esc.
+- `rowReorder.canDrag` 로 줄마다 끌 수 있는지, `disabledReason` 으로 정렬 · 거르기 중 끌기 막기(손잡이 흐림 + title), `handleWidth` · `handleLabel`.
+- 폰 목록(`mobile`)에서는 카드 왼쪽에 손잡이가 선다. 고정 열이 있으면 손잡이 열도 함께 고정된다. 머리 안 고정 줄(`pinnedRows`)은 옮길 수 없다.
+
 ## 1.8.1
 
 ### Fixed
