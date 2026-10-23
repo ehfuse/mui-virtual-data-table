@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.2
+
+### Fixed
+
+- `autoHeight` + 노션풍 틀(`framed`, 기본값)에서 표가 늘 16px 가로로 넘쳐 가로 막대가 서던 것 — 표의 오른쪽 덧여백(가상 스크롤러용)을 autoHeight 상자에서는 0 으로 둔다.
+
 ## 1.9.0
 
 ### Added

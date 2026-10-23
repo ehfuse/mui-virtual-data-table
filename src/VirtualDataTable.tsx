@@ -2353,7 +2353,8 @@ function VirtualDataTableComponent<T>({
             {reorder.indicator}
             {/* 테이블 — autoHeight 면 가상화 없이 모든 줄을 그리고 높이는 내용을 따른다(페이지가 굴린다). */}
             {autoHeight ? (
-                <Box sx={{ overflowX: "auto", width: "100%" }}>
+                // 표의 오른쪽 덧여백(framed 16px)은 가상 스크롤러용이다 — 여기서는 상자 폭을 16px 넘겨 늘 가로 막대가 섰다(1.9.2, 업무 기여도 상세 창).
+                <Box sx={{ overflowX: "auto", width: "100%", "& > .MuiTable-root": { marginRight: 0 } }}>
                     <AutoTable>
                         {mobileList ? null : <AutoTableHead>{fixedHeaderContent()}</AutoTableHead>}
                         <AutoTableBody>
