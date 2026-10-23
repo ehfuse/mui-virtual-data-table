@@ -2342,7 +2342,8 @@ function VirtualDataTableComponent<T>({
                               // 마지막 줄 아래선 — 틀 바닥(또는 합계 줄의 윗선)과 맞닿으면 긋지 않는다. 두 선이 겹쳐 굵은 이중선으로 보였다(2026-10-17).
                               // 맞닿는 경우: 내용 높이만큼 서는 표(autoHeight), 줄이 영역보다 길어 끝까지 내리면 바닥에 닿는 표, 합계 줄이 있는 표.
                               // 줄이 적어 아래가 비는 표는 그대로 긋는다 — 줄이 어디서 끝나는지 보여야 한다.
-                              ...(data.length > 0 && (sizeAuto || listOverflows || hasFooter)
+                              // autoHeight 라도 틀이 없으면(framed=false) 맞닿는 바닥선이 없다 — 마지막 줄 아래선을 남긴다(1.9.3, 업무함 구성원 목록 "마지막 줄 아래 구분선이 없다").
+                              ...(data.length > 0 && ((sizeAuto && framed) || listOverflows || hasFooter)
                                   ? { [`& tbody tr[data-index="${data.length - 1}"]:not([data-vdt-pinned-row]) td`]: { borderBottom: "none" } }
                                   : {}),
                           }
