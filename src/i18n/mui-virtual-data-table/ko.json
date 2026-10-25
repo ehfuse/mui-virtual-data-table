@@ -1,0 +1,10 @@
+{
+    "clearFilter": "거르기 풀기",
+    "clearSort": "정렬 풀기",
+    "noMatches": "찾는 값이 없습니다.",
+    "noOptions": "고를 값이 없습니다.",
+    "reorderHandle": "순서 옮기기",
+    "search": "찾기",
+    "sortAscending": "오름차순 정렬",
+    "sortDescending": "내림차순 정렬"
+}

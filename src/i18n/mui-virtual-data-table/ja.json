@@ -1,0 +1,10 @@
+{
+    "clearFilter": "フィルター解除",
+    "clearSort": "並べ替え解除",
+    "noMatches": "一致する項目がありません。",
+    "noOptions": "選択可能な項目がありません。",
+    "reorderHandle": "ドラッグして並べ替え",
+    "search": "検索",
+    "sortAscending": "昇順で並べ替え",
+    "sortDescending": "降順で並べ替え"
+}

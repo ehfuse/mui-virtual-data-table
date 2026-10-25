@@ -10,6 +10,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Box, Divider, InputBase, Menu, MenuItem, SvgIcon, type SxProps, type Theme } from "@mui/material";
+import { useI18n } from "./i18n";
 
 /** 메뉴 크기 규칙 — 모든 머리 메뉴가 같은 값을 쓴다. */
 export const HEADER_MENU_FONT_SIZE = 14;
@@ -190,6 +191,7 @@ export function HeaderMenu({
     minWidth = 180,
     maxHeight = 420,
 }: HeaderMenuProps) {
+    const { t } = useI18n();
     const [query, setQuery] = useState("");
     const multiple = filter?.multiple !== false;
     const picked = filter?.value ?? [];
@@ -223,7 +225,7 @@ export function HeaderMenu({
                 onClick={() => pickSort("asc")}
                 icon={<HeaderMenuIcon d={HEADER_MENU_ICON_PATHS.asc} color="text.secondary" />}
             >
-                오름차순 정렬
+                {t("sortAscending")}
             </HeaderMenuItem>,
             <HeaderMenuItem
                 key="sort-desc"
@@ -231,7 +233,7 @@ export function HeaderMenu({
                 onClick={() => pickSort("desc")}
                 icon={<HeaderMenuIcon d={HEADER_MENU_ICON_PATHS.desc} color="text.secondary" />}
             >
-                내림차순 정렬
+                {t("sortDescending")}
             </HeaderMenuItem>,
         );
         if (sort.active && sort.clearable !== false) {
@@ -245,7 +247,7 @@ export function HeaderMenu({
                         sort.onChange(null);
                     }}
                 >
-                    정렬 풀기
+                    {t("clearSort")}
                 </HeaderMenuItem>,
             );
         }
@@ -265,7 +267,7 @@ export function HeaderMenu({
                         autoFocus
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder={filter.searchPlaceholder ?? "찾기"}
+                        placeholder={filter.searchPlaceholder ?? t("search")}
                         sx={{ flex: 1, fontSize: HEADER_MENU_FONT_SIZE }}
                     />
                 </Box>,
@@ -289,7 +291,7 @@ export function HeaderMenu({
         if (options.length === 0) {
             items.push(
                 <HeaderMenuItem key="f-none" disabled iconSpace>
-                    {filter.emptyText ?? "고를 값이 없습니다."}
+                    {filter.emptyText ?? t("noOptions")}
                 </HeaderMenuItem>,
             );
         }
@@ -332,7 +334,7 @@ export function HeaderMenu({
         if (searchable && keyword && shown.length === 0) {
             items.push(
                 <HeaderMenuItem key="f-nohit" disabled iconSpace>
-                    찾는 값이 없습니다.
+                    {t("noMatches")}
                 </HeaderMenuItem>,
             );
         }
@@ -349,7 +351,7 @@ export function HeaderMenu({
                         filter.onChange([]);
                     }}
                 >
-                    {filter.clearLabel ?? "거르기 풀기"}
+                    {filter.clearLabel ?? t("clearFilter")}
                 </HeaderMenuItem>,
             );
         }

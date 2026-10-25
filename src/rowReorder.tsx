@@ -8,6 +8,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { DataColumn, VDTRowReorderConfig } from "./types";
+import { useI18n } from "./i18n";
 
 /** 손잡이 열의 id — 소비처 열과 겹치지 않게 */
 export const REORDER_COLUMN_ID = "__vdt_reorder";
@@ -58,6 +59,7 @@ export interface UseRowReorderArgs<T> {
  * 모든 포인터 처리는 ref 로 해 끄는 동안 React 가 다시 그리지 않는다.
  */
 export function useRowReorder<T>({ config, tableBoxRef, getScroller, dataLengthRef, anyPinned }: UseRowReorderArgs<T>) {
+    const { t } = useI18n();
     const configRef = useRef(config);
     configRef.current = config;
     const on = Boolean(config);
@@ -266,7 +268,7 @@ export function useRowReorder<T>({ config, tableBoxRef, getScroller, dataLengthR
             const cfg = configRef.current;
             if (!cfg) return null;
             if (cfg.canDrag && !cfg.canDrag(item, index)) return null;
-            const label = cfg.handleLabel ?? "순서 옮기기";
+            const label = cfg.handleLabel ?? t("reorderHandle");
             return (
                 <button
                     type="button"
@@ -288,7 +290,7 @@ export function useRowReorder<T>({ config, tableBoxRef, getScroller, dataLengthR
                 </button>
             );
         },
-        [onHandlePointerDown, onHandleKeyDown],
+        [onHandlePointerDown, onHandleKeyDown, t],
     );
 
     const handleWidth = config?.handleWidth ?? 36;

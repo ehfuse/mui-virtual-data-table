@@ -39,3 +39,7 @@ export type {
     VDTColumnWidths,
     VDTRowReorderConfig,
 } from "./types";
+
+// 화면 문구 언어(기본 한국어 — 2026-10-26)
+export { setMuiVirtualDataTableLocale, getMuiVirtualDataTableLocale } from "./i18n";
+export type { MuiVirtualDataTableLang } from "./i18n";
