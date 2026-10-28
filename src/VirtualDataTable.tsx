@@ -963,6 +963,9 @@ function VirtualDataTableComponent<T>({
         (col: DataColumn<T>) => {
             if (!hasColumnFilter(col)) return col.text;
             const active = Boolean(col.filterValues && col.filterValues.length > 0);
+            // 가운데 맞춤 칸은 아이콘을 글자 오른쪽 밖에 띄운다(1.10.1) — 글자 옆에 붙이면 글자+아이콘 묶음이 가운데에 서서 글자가 9px 왼쪽으로 밀렸다.
+            // 정렬 화살표와 같은 방식(left: 100%). 둘 다 있으면 화살표는 아이콘 뒤로 민다(아래 data-filter 규칙).
+            const center = col.align === "center";
             return (
                 <Box
                     component="span"
@@ -974,12 +977,19 @@ function VirtualDataTableComponent<T>({
                         color: active ? "primary.main" : undefined,
                         fontWeight: active ? 600 : undefined,
                         verticalAlign: "middle",
+                        ...(center ? { position: "relative" } : {}),
                     }}
                 >
                     <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {col.text}
                     </Box>
-                    <HeaderFilterIcon active={active} />
+                    {center ? (
+                        <Box component="span" sx={{ position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)", ml: 0.5, display: "inline-flex" }}>
+                            <HeaderFilterIcon active={active} />
+                        </Box>
+                    ) : (
+                        <HeaderFilterIcon active={active} />
+                    )}
                 </Box>
             );
         },
@@ -1174,6 +1184,7 @@ function VirtualDataTableComponent<T>({
                                     <Box
                                         className="vdt-sort-box"
                                         data-align={col.align || "left"}
+                                        data-filter={hasColumnFilter(col) ? "1" : undefined}
                                         sx={{
                                             position: "relative",
                                             cursor: "default",
@@ -1283,6 +1294,7 @@ function VirtualDataTableComponent<T>({
                             <Box
                                 className="vdt-sort-box"
                                         data-align={col.align || "left"}
+                                        data-filter={hasColumnFilter(col) ? "1" : undefined}
                                 sx={{
                                     position: "relative",
                                     cursor: "default",
@@ -1408,6 +1420,7 @@ function VirtualDataTableComponent<T>({
                                 <Box
                                     className="vdt-sort-box"
                                         data-align={col.align || "left"}
+                                        data-filter={hasColumnFilter(col) ? "1" : undefined}
                                     sx={{
                                         position: "relative",
                                         cursor: "default",
@@ -2317,6 +2330,8 @@ function VirtualDataTableComponent<T>({
                               // 가운데 칸은 양옆이 비어 화살표가 밖(left: 100%)에 떠도 잘리지 않으니 글자를 칸 한가운데에 둔다.
                               "& thead .vdt-sort-box:not([data-align='center'])": { paddingRight: "20px" },
                               "& thead .vdt-sort-box:not([data-align='center']) > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
+                              // 가운데 칸에 거르기 아이콘도 있으면 아이콘이 글자 밖(left: 100%)에 뜨니 화살표는 그 뒤로(간격 4 + 아이콘 14 + 간격 4, 1.10.1)
+                              "& thead .vdt-sort-box[data-align='center'][data-filter='1'] > .MuiTableSortLabel-root": { marginLeft: "22px !important" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
