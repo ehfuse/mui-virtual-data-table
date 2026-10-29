@@ -2328,8 +2328,11 @@ function VirtualDataTableComponent<T>({
                               // 노션풍은 화살표 자리를 머리글 상자 안에 두고(오른쪽 20px) 화살표를 그 자리 끝에 세운다.
                               // 가운데 맞춤 칸은 예외(1.9.1, 2026-10-22) — 자리를 안에 두면 글자+화살표 묶음이 가운데에 서서 글자가 왼쪽으로 10px 밀렸다.
                               // 가운데 칸은 양옆이 비어 화살표가 밖(left: 100%)에 떠도 잘리지 않으니 글자를 칸 한가운데에 둔다.
-                              "& thead .vdt-sort-box:not([data-align='center'])": { paddingRight: "20px" },
-                              "& thead .vdt-sort-box:not([data-align='center']) > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
+                              "& thead .vdt-sort-box[data-align='left']": { paddingRight: "20px" },
+                              "& thead .vdt-sort-box[data-align='left'] > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
+                              // 오른쪽 맞춤 칸은 화살표를 글자 왼쪽에(1.10.2) — 오른쪽에 자리를 두면 머리글이 값들보다 20px 왼쪽으로 밀려 숫자 끝과 안 맞았다(포인트 · 금액 칸)
+                              "& thead .vdt-sort-box[data-align='right']": { paddingLeft: "20px" },
+                              "& thead .vdt-sort-box[data-align='right'] > .MuiTableSortLabel-root": { left: "0 !important", right: "auto", marginLeft: "0 !important" },
                               // 가운데 칸에 거르기 아이콘도 있으면 아이콘이 글자 밖(left: 100%)에 뜨니 화살표는 그 뒤로(간격 4 + 아이콘 14 + 간격 4, 1.10.1)
                               "& thead .vdt-sort-box[data-align='center'][data-filter='1'] > .MuiTableSortLabel-root": { marginLeft: "22px !important" },
                               "& thead tr th": {
