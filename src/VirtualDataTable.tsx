@@ -146,6 +146,17 @@ function hasColumnFilter<T>(col: DataColumn<T>): boolean {
     return Boolean(col.filterOptions && col.onFilterChange);
 }
 
+/**
+ * 정렬 화살표 자리(1.10.4) — 칸 맞춤(align)으로 정한다. 표 꼴(variant)과 상관없이 같다(1.10.3 까지는 노션풍 CSS 에만 있어 기본 꼴 표는 화살표가 밖에 떠 잘렸다).
+ * 왼쪽 맞춤: 머리글 오른쪽 안(상자 오른쪽 20px) · 오른쪽 맞춤: 머리글 왼쪽 안(상자 왼쪽 20px — 머리글 끝이 값 끝과 맞는다) ·
+ * 가운데 맞춤: 머리글 묶음 밖(left 100%) — 호버 때만 보이니 묶음을 밀지 않고 묶음이 칸 가운데에 선다.
+ */
+function sortPlacement(align?: "left" | "center" | "right") {
+    if (align === "right") return { box: { paddingLeft: "20px" }, label: { left: 0, marginLeft: 0 } };
+    if (align === "center") return { box: {}, label: { left: "100%", marginLeft: "4px" } };
+    return { box: { paddingRight: "20px" }, label: { left: "auto", right: 0, marginLeft: 0 } };
+}
+
 function VirtualDataTableComponent<T>({
     data,
     loading = false,
@@ -963,9 +974,8 @@ function VirtualDataTableComponent<T>({
         (col: DataColumn<T>) => {
             if (!hasColumnFilter(col)) return col.text;
             const active = Boolean(col.filterValues && col.filterValues.length > 0);
-            // 가운데 맞춤 칸은 아이콘을 글자 오른쪽 밖에 띄운다(1.10.1) — 글자 옆에 붙이면 글자+아이콘 묶음이 가운데에 서서 글자가 9px 왼쪽으로 밀렸다.
-            // 정렬 화살표와 같은 방식(left: 100%). 둘 다 있으면 화살표는 아이콘 뒤로 민다(아래 data-filter 규칙).
-            const center = col.align === "center";
+            // 거르기 아이콘은 늘 보이니 글자와 한 묶음으로 선다 — 가운데 맞춤이면 묶음이 가운데(1.10.3, 1.10.1 의 밖에 띄우기를 되돌림).
+            // 정렬 화살표만 호버 때 보이는 것이라 묶음 밖(left: 100%)에 뜬다.
             return (
                 <Box
                     component="span"
@@ -977,19 +987,12 @@ function VirtualDataTableComponent<T>({
                         color: active ? "primary.main" : undefined,
                         fontWeight: active ? 600 : undefined,
                         verticalAlign: "middle",
-                        ...(center ? { position: "relative" } : {}),
                     }}
                 >
                     <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {col.text}
                     </Box>
-                    {center ? (
-                        <Box component="span" sx={{ position: "absolute", left: "100%", top: "50%", transform: "translateY(-50%)", ml: 0.5, display: "inline-flex" }}>
-                            <HeaderFilterIcon active={active} />
-                        </Box>
-                    ) : (
-                        <HeaderFilterIcon active={active} />
-                    )}
+                    <HeaderFilterIcon active={active} />
                 </Box>
             );
         },
@@ -1187,6 +1190,7 @@ function VirtualDataTableComponent<T>({
                                         data-filter={hasColumnFilter(col) ? "1" : undefined}
                                         sx={{
                                             position: "relative",
+                                            ...sortPlacement(col.align).box,
                                             cursor: "default",
                                             "&:hover .MuiTableSortLabel-root": {
                                                 opacity: "1 !important",
@@ -1210,10 +1214,9 @@ function VirtualDataTableComponent<T>({
                                             }
                                             sx={{
                                                 position: "absolute",
-                                                left: "100%",
                                                 top: "50%",
                                                 transform: "translateY(-50%)",
-                                                marginLeft: "4px",
+                                                ...sortPlacement(col.align).label,
                                                 minWidth: "auto",
                                                 width: "16px",
                                                 height: "16px",
@@ -1297,6 +1300,7 @@ function VirtualDataTableComponent<T>({
                                         data-filter={hasColumnFilter(col) ? "1" : undefined}
                                 sx={{
                                     position: "relative",
+                                    ...sortPlacement(col.align).box,
                                     cursor: "default",
                                     "&:hover .MuiTableSortLabel-root": {
                                         opacity: "1 !important",
@@ -1318,10 +1322,9 @@ function VirtualDataTableComponent<T>({
                                     }
                                     sx={{
                                         position: "absolute",
-                                        left: "100%",
                                         top: "50%",
                                         transform: "translateY(-50%)",
-                                        marginLeft: "4px",
+                                        ...sortPlacement(col.align).label,
                                         minWidth: "auto",
                                         width: "16px",
                                         height: "16px",
@@ -1423,6 +1426,7 @@ function VirtualDataTableComponent<T>({
                                         data-filter={hasColumnFilter(col) ? "1" : undefined}
                                     sx={{
                                         position: "relative",
+                                        ...sortPlacement(col.align).box,
                                         cursor: "default",
                                         "&:hover .MuiTableSortLabel-root": {
                                             opacity: "1 !important",
@@ -1444,10 +1448,9 @@ function VirtualDataTableComponent<T>({
                                         }
                                         sx={{
                                             position: "absolute",
-                                            left: "100%",
                                             top: "50%",
                                             transform: "translateY(-50%)",
-                                            marginLeft: "4px",
+                                            ...sortPlacement(col.align).label,
                                             minWidth: "auto",
                                             width: "16px",
                                             height: "16px",
@@ -2324,17 +2327,7 @@ function VirtualDataTableComponent<T>({
                               // 넘치면 말줄임, 전체 이름은 title(글자 머리) 툴팁으로 본다. 높이는 columnHeight 그대로다.
                               "& thead > tr > th": { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
                               "& thead > tr > th > *": { maxWidth: "100%" },
-                              // 정렬 화살표는 머리글 오른쪽 밖(left: 100%)에 떠 있어, 오른쪽 맞춤 칸에서는 칸 여백(14px)을 넘어 위의 overflow 에 잘렸다(합계 칸).
-                              // 노션풍은 화살표 자리를 머리글 상자 안에 두고(오른쪽 20px) 화살표를 그 자리 끝에 세운다.
-                              // 가운데 맞춤 칸은 예외(1.9.1, 2026-10-22) — 자리를 안에 두면 글자+화살표 묶음이 가운데에 서서 글자가 왼쪽으로 10px 밀렸다.
-                              // 가운데 칸은 양옆이 비어 화살표가 밖(left: 100%)에 떠도 잘리지 않으니 글자를 칸 한가운데에 둔다.
-                              "& thead .vdt-sort-box[data-align='left']": { paddingRight: "20px" },
-                              "& thead .vdt-sort-box[data-align='left'] > .MuiTableSortLabel-root": { left: "auto !important", right: 0, marginLeft: "0 !important" },
-                              // 오른쪽 맞춤 칸은 화살표를 글자 왼쪽에(1.10.2) — 오른쪽에 자리를 두면 머리글이 값들보다 20px 왼쪽으로 밀려 숫자 끝과 안 맞았다(포인트 · 금액 칸)
-                              "& thead .vdt-sort-box[data-align='right']": { paddingLeft: "20px" },
-                              "& thead .vdt-sort-box[data-align='right'] > .MuiTableSortLabel-root": { left: "0 !important", right: "auto", marginLeft: "0 !important" },
-                              // 가운데 칸에 거르기 아이콘도 있으면 아이콘이 글자 밖(left: 100%)에 뜨니 화살표는 그 뒤로(간격 4 + 아이콘 14 + 간격 4, 1.10.1)
-                              "& thead .vdt-sort-box[data-align='center'][data-filter='1'] > .MuiTableSortLabel-root": { marginLeft: "22px !important" },
+                              // 정렬 화살표 자리는 sortPlacement(칸 맞춤)가 정한다(1.10.4 — 표 꼴과 상관없이)
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
