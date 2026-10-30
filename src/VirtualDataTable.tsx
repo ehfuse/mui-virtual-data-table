@@ -2502,6 +2502,26 @@ function VirtualDataTableComponent<T>({
                             visible={loading}
                             onComplete={handleLoadingComplete}
                         />
+                    ) : loadingGate ? (
+                        // 앱 전역 로딩 관문(1.11.0) — 앱이 기본 로딩 표시를 대신 그릴지 정한다(예: 앱 시작 화면을 붙잡고 아무것도 안 그림).
+                        // 관문이 기본 표시를 쓰겠다면 fallback 을 그대로 그린다.
+                        React.createElement(loadingGate, {
+                            visible: Boolean(loading),
+                            onComplete: handleLoadingComplete,
+                            fallback: (
+                                <LoadingProgress
+                                    visible={loading}
+                                    onComplete={handleLoadingComplete}
+                                    size={40}
+                                    indicator={<CssSpinner />}
+                                    sx={{
+                                        top: `${columns.some((col) => col.group) ? columnHeight * 2 : columnHeight}px`,
+                                        bottom: `${hasFooter ? footerHeight ?? rowHeight : 0}px`,
+                                    }}
+                                    background={{ show: data.length === 0, opacity: 0.8 }}
+                                />
+                            ),
+                        })
                     ) : (
                         <LoadingProgress
                             visible={loading}
@@ -2569,6 +2589,22 @@ function VirtualDataTableComponent<T>({
             {tableContent}
         </Box>
     );
+}
+
+
+/**
+ * 앱 전역 로딩 관문(1.11.0) — LoadingComponent 를 주지 않은 표 모두에 걸린다.
+ * 관문은 { visible, onComplete, fallback } 을 받아, 기본 로딩 표시(fallback)를 그리거나 다른 것을 그린다.
+ * visible 이 false 가 되면 onComplete 를 불러야 표가 로딩 표시를 걷는다(fallback 을 그렸으면 fallback 이 부른다).
+ */
+export interface VirtualDataTableLoadingGateProps {
+    visible: boolean;
+    onComplete: () => void;
+    fallback: React.ReactNode;
+}
+let loadingGate: React.ComponentType<VirtualDataTableLoadingGateProps> | null = null;
+export function setVirtualDataTableLoadingGate(gate: React.ComponentType<VirtualDataTableLoadingGateProps> | null): void {
+    loadingGate = gate;
 }
 
 export const VirtualDataTable = memo(VirtualDataTableComponent) as <T>(

@@ -1,0 +1,304 @@
+/**
+ * types.ts - Virtual Data Table Types
+ *
+ * MIT License
+ *
+ * Copyright (c) 2025 KIM YOUNG JIN (ehfuse@gmail.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+import React from "react";
+import type { SxProps, Theme } from "@mui/material";
+import { OverlayScrollbarProps } from "@ehfuse/overlay-scrollbar";
+import type { HeaderMenuOption } from "./HeaderMenu";
+/**
+ * 테이블 컬럼 정의 인터페이스
+ */
+export interface DataColumn<T> {
+    id: keyof T | string;
+    text: string | React.ReactNode;
+    width?: string | number;
+    sortable?: boolean;
+    align?: "left" | "center" | "right";
+    style?: React.CSSProperties;
+    render?: (item: T, index: number) => React.ReactNode;
+    group?: string;
+    footer?: (data: T[]) => React.ReactNode;
+    footerColSpan?: number;
+    /**
+     * 가로로 밀어도 왼쪽에 붙어 있는 열. 붙는 자리는 앞쪽 고정 열들의 width 합이라 고정 열은 width 를 숫자(px)로 준다.
+     * 여러 앞 열(지원사업 · 대상자 …)을 함께 세워 두는 넓은 표에서 쓴다.
+     */
+    pinned?: "left";
+    /** 머리 칸(th)에 그대로 얹을 속성 — 끌어서 열 순서 바꾸기(draggable · onDrop …)나 title 같은 것. style 은 기본 머리 모양 위에 덮인다. */
+    headerProps?: Omit<React.ThHTMLAttributes<HTMLTableCellElement>, "align">;
+    /** 본문 칸의 줄마다 다른 스타일(완료 줄 흐리게 · 칸 바탕 등). column.style 위에 덮인다. */
+    cellStyle?: (item: T, index: number) => React.CSSProperties;
+    /**
+     * 본문 칸 안쪽 여백. 주면 기본(variant 별) 여백 대신 이 값을 쓴다 — 칸 안에 단추를 꽉 채워 넣는 열(회차 칸 등)처럼
+     * 여백을 따로 줘야 하는 열에 쓴다.
+     */
+    cellPadding?: string | number;
+    /** 줄의 대표 칸(이름 · 제목) — 본문 글자를 15px 로 키운다. 화면마다 첫 칸에 fontSize 15 를 적던 것을 대신한다. */
+    primary?: boolean;
+    /**
+     * 칸 하나를 누르는 표(근태 주간 · 예약 아젠다 — 칸마다 다른 날 · 사람). 주면 그 칸에 호버 바탕이 생기고, 누르면 이 함수만 불린다
+     * (줄의 onRowClick 은 불리지 않는다).
+     */
+    onCellClick?: (item: T, index: number, event: React.MouseEvent) => void;
+    /**
+     * 폰 목록(mobile)에서 이 열이 설 자리(1.6.0). 주지 않으면 첫 열은 title, 나머지는 meta 다.
+     * title 제목(굵게 · 첫 줄) · thumb 왼쪽 사진 · badge 제목 오른쪽(상태 칩) · sub 제목 아래 한 줄 · meta 아래 "머리글 값" 묶음 · false 숨김.
+     */
+    mobile?: VDTMobileSlot | false;
+    /** 폰 목록 meta 줄의 이름 — 기본은 머리글(text)이 글일 때 그 글. false 면 이름 없이 값만. */
+    mobileLabel?: React.ReactNode | false;
+    /**
+     * 칸을 아래 줄까지 합친다 — 그 줄에서 합칠 줄 수를 돌려주고, 위 칸에 덮인 줄에서는 0 을 돌려준다(칸을 그리지 않는다).
+     * 가상화로 보이는 줄만 그리면 덮은 칸이 사라질 수 있어 autoHeight 표 · 줄이 적은 표에서만 쓴다.
+     */
+    rowSpan?: (item: T, index: number) => number;
+    /**
+     * 칸을 오른쪽 열까지 합친다(1.3.0) — 그 줄에서 합칠 열 수를 돌려준다(1 = 합치지 않음). 덮인 오른쪽 열의 칸은 그리지 않는다.
+     * 줄마다 칸 구성이 다른 표(일정 줄은 책임자 · 참조자 두 칸을 참석자 한 칸으로)에서 쓴다.
+     */
+    colSpan?: (item: T, index: number) => number;
+    /**
+     * width 를 비운 열(남는 폭을 나눠 갖는 열)의 최소 폭 px(1.3.0). 표의 최소 폭은 열마다 width(숫자) 또는 minWidth 의 합이 되고,
+     * 틀이 그보다 좁으면 가로로 민다 — 제목처럼 남는 폭을 다 가져가되 좁은 화면에서 0 으로 접히면 안 되는 열.
+     */
+    minWidth?: number;
+    /**
+     * 머리 우클릭 메뉴의 거르기 값 목록(1.4.0). onFilterChange 와 함께 주면 머리를 우클릭했을 때 이 값들이 고르기 목록으로 뜬다.
+     * 값은 글자다(빈 글자 = 비어 있음 같은 값도 그대로 쓴다). 거르는 일 자체는 소비처가 한다 — 표는 고른 값만 알린다.
+     */
+    filterOptions?: HeaderMenuOption[];
+    /** 값 ""(비어 있음) 항목을 끝에 더한다 — 그 이름(1.5.0, 예: "지역 없음"). */
+    filterEmptyLabel?: string;
+    /** 맨 위 찾기 칸(1.5.0) — 기본: 값이 10개를 넘으면. */
+    filterSearchable?: boolean;
+    /** 지금 걸린 거르기 값(1.4.0). 하나라도 있으면 머리글이 강조색 + 거르기 아이콘으로 선다(걸린 줄 모르고 "왜 몇 줄 없지" 하지 않게). */
+    filterValues?: string[];
+    /** 거르기 값이 바뀔 때(1.4.0) — 다 풀면 빈 배열. */
+    onFilterChange?: (values: string[]) => void;
+    /** 여러 값을 함께 고르는지(기본 true). false 면 하나만 — 고르면 메뉴가 닫히고, 같은 값을 다시 고르면 풀린다. */
+    filterMultiple?: boolean;
+    /**
+     * 머리 우클릭 메뉴에 정렬 항목을 둘지(1.4.1, 기본: sortable 과 같다). 머리를 직접 그리는 열(자기 정렬 표시 · 머리 클릭을 headerProps 로 다는 열)은
+     * sortable 을 켜면 표의 정렬 표시 · 클릭이 겹치므로, sortable 없이 이것만 true 로 메뉴에 정렬을 둔다. sortable 열에서 false 면 메뉴에서 뺀다.
+     */
+    sortMenu?: boolean;
+    /** false 면 이 열은 머리 우클릭 메뉴를 띄우지 않는다(브라우저 메뉴는 여전히 막는다, 1.4.0). */
+    headerMenu?: boolean;
+}
+/** 정렬 방향 타입 */
+export type SortDirection = "asc" | "desc";
+export interface SortableFilter {
+    sortBy?: string;
+    sortDirection?: SortDirection;
+}
+/**
+ * OverlayScrollbarProps에서 children을 제외한 타입
+ */
+export type VDTOverlayScrollbarProps = Omit<OverlayScrollbarProps, "children">;
+/** 뷰포트 바깥 미리 렌더링 버퍼 범위 타입이다. */
+export interface ViewportBuffer {
+    top?: number;
+    bottom?: number;
+}
+/** 가상화 렌더링 overscan 범위 타입이다. */
+export interface VDTOverscan {
+    main?: number;
+    reverse?: number;
+}
+/**
+ * 데이터 기반 가상화 테이블 컴포넌트 Props
+ */
+/** 폰 목록에서 열이 설 자리(1.6.0) */
+export type VDTMobileSlot = "title" | "thumb" | "badge" | "sub" | "meta";
+/** 폰 목록 설정(1.6.0) */
+export interface VDTMobileConfig<T> {
+    /** 폰 목록으로 바꿀 미디어쿼리 — 기본 "(max-width:599.95px)"(MUI sm 미만) */
+    query?: string;
+    /** 줄 하나를 통째로 그린다 — 주면 열의 mobile 자리 대신 이것을 쓴다. 줄 누름 · 선택 표시는 표가 그대로 한다. */
+    renderRow?: (item: T, index: number) => React.ReactNode;
+}
+/** 열 폭 끌어 바꾸기 설정(1.8.0) */
+export interface VDTColumnResizeConfig {
+    /** 열에 minWidth 가 없을 때 줄일 수 있는 최소 폭 px — 기본 48 */
+    minWidth?: number;
+}
+/** 열 키(String(column.id)) → 바꾼 폭 px(1.8.0). 없는 열은 column.width 그대로다. */
+export type VDTColumnWidths = Record<string, number>;
+export interface VirtualDataTableProps<T> {
+    data: T[];
+    totalCount: number;
+    loading?: boolean;
+    columns: DataColumn<T>[];
+    onRowClick?: (item: T, index: number) => void;
+    getRowId?: (item: T, index: number) => string | number;
+    selectedRowId?: string | number | null;
+    selectedRowSx?: SxProps<Theme> | ((item: T, index: number) => SxProps<Theme>);
+    rowHeight?: number;
+    columnHeight?: number;
+    striped?: string | boolean;
+    rowDivider?: boolean;
+    onSort?: (columnId: string, direction: SortDirection) => void;
+    /**
+     * 정렬 풀기(1.4.0) — 주면 머리 우클릭 메뉴에 "정렬 풀기" 가 서고(그 열로 정렬 중일 때), 같은 방향을 다시 고르면 이것을 부른다.
+     * 기본 정렬로 되돌릴 수 있는 목록만 준다.
+     */
+    onSortClear?: () => void;
+    /**
+     * 머리 칸 우클릭(1.4.0). 브라우저 메뉴는 늘 막는다. true 를 돌려주거나 event.preventDefault() 를 부르면 "처리했다" 로 보고
+     * 기본 머리 메뉴(정렬 · 거르기)를 띄우지 않는다 — 화면이 이미 가진 머리 메뉴를 우클릭에도 열 때 쓴다.
+     * 묶음 머리(group) 칸에서는 부르지 않는다.
+     */
+    onHeaderContextMenu?: (column: DataColumn<T>, event: React.MouseEvent<HTMLTableCellElement>) => boolean | void;
+    onLoadMore?: (offset: number, limit: number) => void;
+    sortBy?: string;
+    sortDirection?: SortDirection;
+    showPaper?: boolean;
+    paddingX?: string | number;
+    paddingTop?: string | number;
+    paddingBottom?: string | number;
+    rowHoverColor?: string;
+    rowHoverOpacity?: number;
+    viewportBuffer?: number | ViewportBuffer;
+    overscan?: number | VDTOverscan;
+    initialItemCount?: number;
+    scrollbars?: VDTOverlayScrollbarProps;
+    emptyMessage?: string | React.ReactNode;
+    LoadingComponent?: React.ComponentType<{
+        visible?: boolean;
+        onComplete?: () => void;
+    }>;
+    showFooter?: boolean;
+    footerHeight?: number;
+    footerSx?: SxProps<Theme>;
+    /**
+     * 표 생김새. "notion" 은 @ehfuse/taskbox 목록표와 같은 노션풍이다 — 낮은 머리(40px)·13px 회색 머리글·칸 사이 세로선·
+     * 옅은 가로선·단색 호버. 업무함 표와 나란히 쓰이는 목록(전자결재·게시판)이 다른 제품처럼 보이지 않게 둔 값이다.
+     * 기본값 "default" 는 종전 모양 그대로다. columnHeight·paddingX·rowHoverColor 를 따로 주면 그 값이 이긴다.
+     */
+    variant?: "default" | "notion";
+    /**
+     * 노션풍 바깥 틀(1px 테두리 · 4px 모서리 · 종이 사방 여백)을 그린다(기본 true). 이미 테두리를 두른 상자 안에 표를 꽉 채워 넣을 때 false —
+     * 테두리 · 여백 없이 표만 그리고 표 바탕을 종이 색으로 칠한다.
+     */
+    framed?: boolean;
+    /**
+     * 머리 줄 윗선(노션풍 · framed={false} 일 때). 틀 없는 표를 머리 줄(도구 줄)과 한 상자에 넣으면 표 머리 위가 경계 없이 붙는다 —
+     * 이 선이 그 경계를 긋는다. 틀이 있는 표는 바깥 테두리가 윗선이라 쓰지 않는다. 기본 false.
+     */
+    headerTopBorder?: boolean;
+    /**
+     * 줄 높이 방식. "fixed"(기본)는 모든 줄을 rowHeight 로 박는다(합계 줄 떨림 방지). "auto" 는 rowHeight 를 최소 높이로 두고
+     * 내용(여러 줄 글 · 칸 안 단추 두 줄)만큼 늘어난다.
+     */
+    rowHeightMode?: "fixed" | "auto";
+    /**
+     * 열 폭 방식. "fixed"(기본)는 column.width 대로, "auto" 는 내용에 맞춰 열 폭이 정해지고 표가 틀보다 넓어지면 가로로 민다.
+     * 열 수가 데이터마다 달라지는 표(피벗 · 월별 표)에서 쓴다. 가상화로 보이는 줄만 그리므로 줄이 아주 많은 표에는 맞지 않는다.
+     */
+    tableLayout?: "fixed" | "auto";
+    /**
+     * 이 줄을 칸 나눔 없이 한 칸(모든 열 병합)으로 그린다 — 묶음 머리 줄(업체 이름 · 소계)처럼. null/undefined 를 돌려주면 보통 줄이다.
+     * 누르면 onRowClick 이 같은 item 으로 불린다(접기 · 펴기는 소비처가).
+     */
+    renderFullWidthRow?: (item: T, index: number) => React.ReactNode | null | undefined;
+    /** renderFullWidthRow 줄의 칸(td) 스타일 — 바탕색 · 여백. */
+    fullWidthRowSx?: SxProps<Theme>;
+    /**
+     * 표 자체 스크롤 없이 내용 높이만큼 그린다(가상화 없음) — 페이지에 얹어 페이지가 굴리는 표(근태 표 등).
+     * 머리 줄은 페이지 기준으로 붙지 않는다(가로로 넘치면 표 상자가 옆으로 민다). onLoadMore 는 쓰지 않는다.
+     */
+    autoHeight?: boolean;
+    /** 줄 우클릭 — 끌어서 민 뒤가 아니면 부른다. */
+    onRowContextMenu?: (item: T, index: number, event: React.MouseEvent) => void;
+    /**
+     * 머리 줄 바로 아래 붙어 스크롤과 무관하게 늘 보이는 줄들(1.3.0) — "미확인 · 검수 대기" 처럼 놓치면 안 되는 줄을 목록 위에 세운다.
+     * 본문(data)과 같은 열 · 칸 렌더 · 묶음 띠 줄(renderFullWidthRow) · 클릭 · 우클릭 · 선택 줄 모양을 쓴다(onRowClick 의 index 는 이 배열 안의 순번).
+     * 같은 줄을 data 에도 넣으면 두 번 보이니 소비처가 뺀다.
+     */
+    pinnedRows?: T[];
+    /** pinnedRows 영역의 최대 높이 px — 넘치면 그 영역만 따로 굴린다(기본: 제한 없음). */
+    pinnedRowsMaxHeight?: number;
+    /** pinnedRows 영역(본문과의 경계선 등) 스타일. 기본은 노션풍 진한 회색 아랫선 1px. */
+    pinnedRowsSx?: SxProps<Theme>;
+    /**
+     * data 가 "바뀌면"(길이가 줄거나 첫 줄이 달라지면) 맨 위로 되돌릴지(기본 true). 묶음 접기 · 완료 숨기기처럼 줄이 빠져도
+     * 보던 자리를 지켜야 하는 목록은 false 로 두고, 조건이 바뀔 때 맨 위로 보내려면 표에 key 를 바꿔 다시 그린다(1.3.0).
+     */
+    resetScrollOnDataChange?: boolean;
+    /**
+     * 줄의 React key 를 getRowId 값으로 둔다(기본 false = 순번). 줄 안에 입력 중인 칸(인라인 편집)이 있는 목록은 켠다 —
+     * 순번 key 면 위에 줄이 끼어들 때 입력 상태가 다른 줄로 옮겨 간다(1.3.0). getRowId 가 줄마다 달라야 한다.
+     */
+    rowKeyFromId?: boolean;
+    /** 목록 끝에 닿을 때마다 부른다(1.3.0) — onLoadMore 와 달리 최소 개수 · 같은 길이 재요청 막기 없이 그대로 알린다(소비처가 중복을 거른다). */
+    onEndReached?: () => void;
+    /**
+     * 노션풍 색 모드(1.3.0). 기본은 MUI 테마의 palette.mode 를 따른다 — 앱 테마는 밝은데 이 화면만 어둡게 그리는 경우(업무함 다크 스위치) 준다.
+     */
+    colorMode?: "light" | "dark";
+    /**
+     * 폰 목록(1.6.0) — 화면이 좁으면(query) 머리 줄 없이 줄마다 카드 한 칸(사진 · 제목 · 칩 · 아래 정보 줄)으로 그린다.
+     * 가상화 · 더 불러오기 · 줄 누름 · 선택 줄 표시는 표와 같다. 칸 자리는 열의 mobile 로 정하고, 통째로 바꾸려면 renderRow.
+     * 머리(정렬 · 거르기) · 합계 줄 · 고정 줄은 폰 목록에서 그리지 않는다. true 면 기본 설정.
+     */
+    mobile?: boolean | VDTMobileConfig<T>;
+    /**
+     * 바깥 스크롤 상자(1.7.0) — 주면 표는 자기 스크롤 없이 내용 높이로 서고, 이 요소의 스크롤에 맞춰 보이는 줄만 그린다
+     * (react-virtuoso customScrollParent). 페이지 전체가 굴러가는 화면(앱 셸 · 머리 접기 · 맨 위로 FAB)에 목록을 얹을 때 쓴다.
+     * null 이면(아직 요소를 못 얻음) 그리지 않고 기다린다.
+     */
+    scrollParent?: HTMLElement | null;
+    /**
+     * 머리 칸 오른쪽 경계를 끌어 열 폭을 바꾼다(1.8.0). 경계를 두 번 누르면 그 열을 처음 폭(column.width)으로 되돌린다.
+     * 폰 목록(mobile)으로 그릴 때는 손잡이도 바꾼 폭도 쓰지 않는다. 끄면(기본) 종전과 같다.
+     */
+    columnResize?: boolean | VDTColumnResizeConfig;
+    /**
+     * 바꾼 열 폭(1.8.0) — 표는 저장소를 모른다. 소비처가 계정 · 브라우저 어디에 둘지 정해 넘긴다.
+     * 주지 않으면 표 안에서만 기억한다(다시 그리면 사라진다). columnResize 가 켜졌을 때만 쓴다.
+     */
+    columnWidths?: VDTColumnWidths;
+    /** 열 폭이 바뀌었을 때 — 끌기를 놓을 때 한 번(끄는 동안은 부르지 않는다), 두 번 눌러 되돌리면 그 열 키를 뺀 값으로(1.8.0). */
+    onColumnWidthsChange?: (widths: VDTColumnWidths) => void;
+    /**
+     * 줄 끌어 옮기기(1.9.0) — 주면 첫 칸에 손잡이(⋮⋮)가 서고, 끌어 놓으면 onReorder(from, to) 를 부른다. 표는 data 를 바꾸지 않는다 —
+     * 소비처가 바꿔 넘기면 그대로 다시 그린다. 정렬 · 거르기가 걸려 보이는 순서가 저장 순서와 다를 때는 disabledReason 으로 막는다.
+     * 폰 목록(mobile)에서는 카드 왼쪽에 손잡이가 선다. 키보드: 손잡이에 초점 → Space → ↑ ↓ → Space.
+     */
+    rowReorder?: VDTRowReorderConfig<T>;
+}
+/** 줄 끌어 옮기기 설정(1.9.0) */
+export interface VDTRowReorderConfig<T> {
+    /** 놓았을 때 — from · to 는 data 안 순번이고 to 는 옮긴 뒤 그 줄이 설 자리(arrayMove(data, from, to) 와 같다). 같은 자리면 부르지 않는다 */
+    onReorder: (from: number, to: number, item: T) => void;
+    /** 이 줄을 끌 수 있나(기본 모두). 끌 수 없는 줄은 손잡이를 그리지 않는다 */
+    canDrag?: (item: T, index: number) => boolean;
+    /** 끌기를 막는 이유(정렬 · 거르기 중 등) — 주면 손잡이를 흐리게 그리고 누를 수 없다. 손잡이 title 로 보인다 */
+    disabledReason?: string;
+    /** 손잡이 열 폭 px(기본 36) */
+    handleWidth?: number;
+    /** 손잡이 aria-label(기본 "순서 옮기기") */
+    handleLabel?: string;
+}

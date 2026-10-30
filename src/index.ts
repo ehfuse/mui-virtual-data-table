@@ -6,7 +6,8 @@
  * @author 김영진 (ehfuse@gmail.com)
  */
 
-export { VirtualDataTable } from "./VirtualDataTable";
+export { VirtualDataTable, setVirtualDataTableLoadingGate } from "./VirtualDataTable";
+export type { VirtualDataTableLoadingGateProps } from "./VirtualDataTable";
 export {
     HeaderMenu,
     HeaderMenuItem,
