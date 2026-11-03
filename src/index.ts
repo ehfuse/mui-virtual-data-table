@@ -6,7 +6,7 @@
  * @author 김영진 (ehfuse@gmail.com)
  */
 
-export { VirtualDataTable, setVirtualDataTableLoadingGate } from "./VirtualDataTable";
+export { VirtualDataTable, setVirtualDataTableLoadingGate, NOTION_LINE_COLOR, NOTION_LINE_COLOR_DARK } from "./VirtualDataTable";
 export type { VirtualDataTableLoadingGateProps } from "./VirtualDataTable";
 export {
     HeaderMenu,

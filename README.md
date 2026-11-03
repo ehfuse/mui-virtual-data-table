@@ -152,7 +152,7 @@ function App() {
     rowKeyFromId={boolean}                  // Use getRowId as the React key of rows (rows with inline editors)
     onEndReached={() => void}               // Fired every time the end is reached (no minimum / no same-length latch)
     colorMode={"light" | "dark"}            // notion colors independent of the MUI palette mode
-    borderColor={string}                    // notion: color for every line (outer frame, header line, cell dividers). Default #dcdbd8 / frame #d4d3d0
+    borderColor={string}                    // notion: color for every line (outer frame, header line, cell dividers). Default NOTION_LINE_COLOR (#d9d8d5, exported) — every notion line uses one color
     mobile={boolean | { query?, renderRow? }} // 1.6.0 card list on narrow screens (see "Mobile list")
     scrollParent={HTMLElement | null}         // 1.7.0 virtualize against an outer (page) scroller
     columnResize={boolean | { minWidth? }}    // 1.8.0 drag the header's right edge to resize a column (see "Column resize")

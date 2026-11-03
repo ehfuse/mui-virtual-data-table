@@ -213,7 +213,7 @@ export interface VirtualDataTableProps<T> {
      */
     variant?: "default" | "notion";
     /**
-     * 노션풍 선 색(1.11.3) — 바깥 틀 · 머리줄 아래 · 칸 사이 선을 모두 이 색으로 칠한다. 안 주면 기본(밝은 화면 #dcdbd8 · 틀 #d4d3d0).
+     * 노션풍 선 색(1.11.3) — 바깥 틀 · 머리줄 아래 · 칸 사이 선을 모두 이 색으로 칠한다. 안 주면 기본 NOTION_LINE_COLOR(밝은 화면 #d9d8d5 — 모든 선이 한 색).
      * 표를 놓는 화면의 다른 선(카드 테두리 등)과 맞출 때 준다. 노션풍이 아니면 쓰지 않는다.
      */
     borderColor?: string;
