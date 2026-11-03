@@ -113,8 +113,9 @@ function applyResizeVars(el: HTMLElement, vars: Record<string, string>) {
  */
 const NOTION_LIGHT = {
     bg: "#ffffff",
-    border: "#e6e6e3",
-    borderStrong: "#dedddb",
+    // 한 단계 진하게(1.11.3, 2026-11-03 사용자 지시 "너무 흐리다") — 예전 #e6e6e3 · #dedddb 는 밝은 모니터에서 선이 잘 안 보였다.
+    border: "#dcdbd8",
+    borderStrong: "#d4d3d0",
     headerColor: "#787774",
     hoverBg: "#f8f8f7",
     emptyColor: "#9b9a97",
@@ -192,6 +193,7 @@ function VirtualDataTableComponent<T>({
     footerHeight,
     footerSx,
     variant = "default",
+    borderColor,
     framed = true,
     headerTopBorder = false,
     scrollbarGutter = false,
@@ -218,7 +220,9 @@ function VirtualDataTableComponent<T>({
     const notion = variant === "notion";
     const muiTheme = useTheme();
     // colorMode 를 주면 앱 테마와 달리 이 표만 그 모드로 칠한다(앱은 밝은데 업무함만 어두운 경우).
-    const notionTokens = (colorMode ?? muiTheme.palette.mode) === "dark" ? NOTION_DARK : NOTION_LIGHT;
+    const baseNotionTokens = (colorMode ?? muiTheme.palette.mode) === "dark" ? NOTION_DARK : NOTION_LIGHT;
+    // 바깥에서 선 색을 주면 틀 · 머리줄 · 칸 선 모두 그 색(1.11.3).
+    const notionTokens = borderColor ? { ...baseNotionTokens, border: borderColor, borderStrong: borderColor } : baseNotionTokens;
     const hasPinnedRows = (pinnedRows?.length ?? 0) > 0;
     const columnHeight = columnHeightProp ?? (notion ? 40 : 56);
     // 노션풍 줄 높이 기본 48 — 업무함 목록 표 · 전자결재 표가 쓰는 값이다.
