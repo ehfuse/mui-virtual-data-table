@@ -194,6 +194,7 @@ function VirtualDataTableComponent<T>({
     variant = "default",
     framed = true,
     headerTopBorder = false,
+    scrollbarGutter = false,
     rowHeightMode = "fixed",
     tableLayout = "fixed",
     renderFullWidthRow,
@@ -251,6 +252,21 @@ function VirtualDataTableComponent<T>({
     // 카드 줄은 내용만큼 높아진다(rowHeight 는 최소 높이)
     const autoRowHeight = rowHeightMode === "auto" || mobileList;
     // 호버는 단색(불투명) — 기본 모양의 반투명 검정은 흰 종이 위에서 회색이 아니라 탁한 색으로 보인다.
+    // 끝 칸 스크롤바 자리(scrollbarGutter, 1.11.1) — 끝 칸 오른쪽 여백 = 원래 칸 여백 + 스크롤바 폭.
+    const gutterPx =
+        typeof scrollbarGutter === "number"
+            ? scrollbarGutter
+            : scrollbarGutter
+              ? (Number((scrollbars as { thumb?: { width?: number } } | undefined)?.thumb?.width) || 8) + 4
+              : 0;
+    const gutterSx =
+        gutterPx > 0
+            ? {
+                  "& thead tr th:last-of-type, & tbody tr td:last-of-type:not([data-vdt-pad])": {
+                      paddingRight: `${(notion ? 14 : 16) + gutterPx}px !important`,
+                  },
+              }
+            : {};
     const rowHoverColor = rowHoverColorProp ?? (notion ? notionTokens.hoverBg : undefined);
     const rowHoverOpacity = rowHoverOpacityProp ?? (notion ? 1 : undefined);
     const defaultViewportBufferTop = Math.max(rowHeight * 12, 480);
@@ -2304,6 +2320,7 @@ function VirtualDataTableComponent<T>({
                               },
                           }
                         : {}),
+                    // 끝 칸 스크롤바 자리(scrollbarGutter) — 아래 노션풍 칸 여백(!important)보다 뒤에 와야 하므로 객체 끝에서 다시 준다(gutterSx).
                     // 노션풍 — 머리·칸의 인라인 style(padding·fontWeight)을 덮어야 해서 !important 다.
                     // 셀렉터를 컨테이너에서 내리는 것은 행 컴포넌트를 건드리지 않기 위해서다(행 재렌더 비용).
                     ...(notion
@@ -2359,6 +2376,7 @@ function VirtualDataTableComponent<T>({
                                   : {}),
                           }
                         : {}),
+                    ...gutterSx,
                 } as SxProps<Theme>
             }
         >
