@@ -210,7 +210,7 @@ export interface VirtualDataTableProps<T> {
     headerTopBorder?: boolean;
     /**
      * 오른쪽 끝 칸에 스크롤바 자리를 비운다(1.11.1, 기본 false — 켜지 않으면 예전 그대로). 표 스크롤바(OverlayScrollbar)는 내용 위에 겹쳐 떠서,
-     * 끝 칸이 오른쪽 맞춤(날짜 · 금액)이면 스크롤바가 나올 때 글자를 가렸다. true 면 스크롤바 막대 폭(scrollbars.thumb.width, 기본 8) + 4px,
+     * 끝 칸이 오른쪽 맞춤(날짜 · 금액)이면 스크롤바가 나올 때 글자를 가렸다. true 면 스크롤바 막대 폭(scrollbars.thumb.width, 기본 8) + 8px(막대 둘레 여백, 1.11.2 — 기본 16px),
      * 숫자면 그 px 만큼 끝 칸(머리 · 본문)의 오른쪽 안쪽 여백에 더한다.
      */
     scrollbarGutter?: boolean | number;

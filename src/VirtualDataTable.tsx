@@ -257,7 +257,7 @@ function VirtualDataTableComponent<T>({
         typeof scrollbarGutter === "number"
             ? scrollbarGutter
             : scrollbarGutter
-              ? (Number((scrollbars as { thumb?: { width?: number } } | undefined)?.thumb?.width) || 8) + 4
+              ? (Number((scrollbars as { thumb?: { width?: number } } | undefined)?.thumb?.width) || 8) + 8
               : 0;
     const gutterSx =
         gutterPx > 0
