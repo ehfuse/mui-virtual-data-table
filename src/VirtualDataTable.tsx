@@ -543,6 +543,13 @@ function VirtualDataTableComponent<T>({
         [data.length, loading, onLoadMore, perfDebugEnabled],
     );
 
+    // 새 데이터가 도착하면(길이 변화) 추가로드 잠금을 해제해 다음 페이지를 받을 수 있게 한다.
+    // (소비처가 추가로드 상태를 loading prop 으로 전달하지 않아도 무한스크롤이 이어지도록 함.
+    //  같은 길이에서의 중복 요청은 alreadyRequestedAtThisLength 가드가 막는다.)
+    useEffect(() => {
+        isLoadingMoreRef.current = false;
+    }, [data.length]);
+
     // 로딩 상태가 변경되면 isLoadingMoreRef 업데이트 (기존 VirtualDataTable 방식)
     useEffect(() => {
         if (!loading) {
