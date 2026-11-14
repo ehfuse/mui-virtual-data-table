@@ -159,6 +159,9 @@ function App() {
     columnWidths={Record<string, number>}     // 1.8.0 resized widths by column id (you store them)
     onColumnWidthsChange={(widths) => void}   // 1.8.0 fired once on release / on double-click reset
     rowReorder={{ onReorder, canDrag?, disabledReason?, handleWidth?, handleLabel? }} // 1.9.0 drag rows by a handle (see "Row reorder")
+    columnReorder={boolean | { holdMs? }}     // 1.12.0 long-press a header cell, then drag left/right to move the column (see "Column reorder")
+    columnOrder={string[]}                    // 1.12.0 column ids in display order (you store them)
+    onColumnOrderChange={(order) => void}     // 1.12.0 fired once on release with every column id in the new order
 
     // Optional - 1.4.0 header context menu (right-click on th never shows the browser menu)
     onSortClear={() => void}                // adds "정렬 풀기" to the header menu (and re-picking the active direction clears)
@@ -271,6 +274,35 @@ const [widths, setWidths] = useAccountSetting("customer.list"); // Record<column
   If no column is flexible, the first drag captures every column's drawn width (1.8.1) so the other columns do not jump.
 - Works with `pinned: "left"` (sticky offsets follow), `autoHeight`, `framed`, `tableLayout`, `variant="notion"`, `pinnedRows`, footer.
   In the `mobile` card list there is no grip and `columnWidths` is ignored.
+
+### Column reorder (1.12.0)
+
+`columnReorder` lets people move a column by pressing and holding its header cell (`holdMs`, default 400ms), then dragging left or right.
+A vertical line shows where it will land; release to drop, Esc to cancel. If the pointer moves before the hold time the gesture is not a drag —
+a normal click still sorts, text selection and touch scrolling work as before. The table does not store anything — keep the order where you like
+and pass it back with `columnOrder`. Without `columnOrder` the table only remembers it until it remounts.
+
+```tsx
+const [order, setOrder] = useAccountSetting("customer.list.order"); // string[] of column ids
+<VirtualDataTable
+    columnReorder                             // or { holdMs: 300 }
+    columnOrder={order}
+    onColumnOrderChange={setOrder}            // once on release — every column id in the new order
+    columns={[
+        { id: "select", text: <Checkbox />, width: 40, reorderable: false }, // stays put, nothing can be dropped there
+        ...
+    ]}
+/>
+```
+
+- Not movable and never a drop target: the row-reorder handle column, `pinned: "left"` columns and columns with `reorderable: false`
+  (selection checkboxes …). With group headers (`group`) a column moves only within its own group.
+- `columnOrder` keys are `String(column.id)`. Columns missing from it keep their original relative position; unknown keys are ignored.
+- Nothing re-renders while dragging (the lifted header gets `data-vdt-col-dragging`, the line is a positioned element). Dragging to the edge of a
+  horizontally scrolling table scrolls it. The click that follows a drag (or a hold) is swallowed, so it never sorts / opens a header menu;
+  on touch the long-press browser menu is suppressed.
+- Works with `columnResize` (the resize grip keeps working; widths follow their column), `variant="notion"`, `autoHeight`.
+  In the `mobile` card list there is no dragging and `columnOrder` is ignored. Off by default — nothing changes unless you turn it on.
 
 ### Row reorder (1.9.0)
 

@@ -38,6 +38,7 @@ export type {
     VDTMobileSlot,
     VDTColumnResizeConfig,
     VDTColumnWidths,
+    VDTColumnReorderConfig,
     VDTRowReorderConfig,
 } from "./types";
 

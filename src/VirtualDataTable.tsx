@@ -52,6 +52,7 @@ import {
 } from "@mui/material";
 import { TableVirtuoso } from "react-virtuoso";
 import { REORDER_COLUMN_ID, useRowReorder } from "./rowReorder";
+import { applyColumnOrder, useColumnReorder } from "./columnReorder";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
 import { CssSpinner } from "./CssSpinner";
@@ -223,6 +224,9 @@ function VirtualDataTableComponent<T>({
     columnWidths,
     onColumnWidthsChange,
     rowReorder,
+    columnReorder,
+    columnOrder,
+    onColumnOrderChange,
 }: VirtualDataTableProps<T>) {
     // 노션풍(variant="notion") — @ehfuse/taskbox 목록표와 같은 값이다. 기본값만 바꾸고 직접 준 prop 이 이긴다.
     const notion = variant === "notion";
@@ -253,9 +257,34 @@ function VirtualDataTableComponent<T>({
         dataLengthRef,
         anyPinned: columnsProp.some((c) => c.pinned === "left"),
     });
+    // 열 순서 바꾸기(1.12.0, 2026-11-14) — 폰 목록은 칸 하나라 끌기도 바꾼 순서도 쓰지 않는다(열 폭 끌기와 같다).
+    const colReorderConfig = columnReorder === true ? {} : columnReorder || null;
+    const colReorderOn = Boolean(colReorderConfig) && !mobileList;
+    // 놓은 뒤 소비처가 새 순서를 넘겨 줄 때까지 쥐는 값 — 소비처가 순서를 넘기지 않으면 이것이 곧 표 안 기억이다.
+    const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+    useEffect(() => {
+        setLocalOrder(null);
+    }, [columnOrder]);
+    const activeOrder = colReorderOn ? (localOrder ?? columnOrder ?? null) : null;
+    const orderedColumns = useMemo(() => applyColumnOrder(columnsProp, activeOrder), [columnsProp, activeOrder]);
+    const orderedColumnsRef = useRef(orderedColumns);
+    orderedColumnsRef.current = orderedColumns;
+    const onColumnOrderChangeRef = useRef(onColumnOrderChange);
+    onColumnOrderChangeRef.current = onColumnOrderChange;
+    const colReorderBoxRef = useRef<HTMLDivElement | null>(null);
+    const colReorder = useColumnReorder<T>({
+        on: colReorderOn,
+        config: colReorderConfig,
+        tableBoxRef: colReorderBoxRef,
+        columnsRef: orderedColumnsRef,
+        onCommit: useCallback((order: string[]) => {
+            setLocalOrder(order);
+            onColumnOrderChangeRef.current?.(order);
+        }, []),
+    });
     const columns = useMemo(
-        () => (reorder.handleColumn ? [reorder.handleColumn, ...columnsProp] : columnsProp),
-        [reorder.handleColumn, columnsProp],
+        () => (reorder.handleColumn ? [reorder.handleColumn, ...orderedColumns] : orderedColumns),
+        [reorder.handleColumn, orderedColumns],
     );
     // 바깥 스크롤(1.7.0) — 페이지가 굴리고 표는 그 스크롤에 맞춰 보이는 줄만 그린다(높이는 내용만큼)
     const external = Boolean(scrollParent);
@@ -1185,6 +1214,8 @@ function VirtualDataTableComponent<T>({
                             title={typeof col.text === "string" ? col.text : undefined}
                             {...col.headerProps}
                             onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
+                            // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
+                            {...colReorder.headerCellProps(col)}
                             style={{
                                 ...colWidthStyle(col, colIndex, col.width ?? col.minWidth),
                                 ...col.style,
@@ -1295,6 +1326,8 @@ function VirtualDataTableComponent<T>({
                     title={typeof col.text === "string" ? col.text : undefined}
                     {...col.headerProps}
                     onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
+                    // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
+                    {...colReorder.headerCellProps(col)}
                     style={{
                         ...colWidthStyle(col, columns.indexOf(col), col.width),
                         ...col.style,
@@ -1421,6 +1454,8 @@ function VirtualDataTableComponent<T>({
                         title={typeof col.text === "string" ? col.text : undefined}
                         {...col.headerProps}
                         onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
+                        // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
+                        {...colReorder.headerCellProps(col)}
                         style={{
                             ...colWidthStyle(col, columns.indexOf(col), col.width),
                             ...col.style,
@@ -1525,7 +1560,7 @@ function VirtualDataTableComponent<T>({
                 <MuiTableRow>{secondRowCells}</MuiTableRow>
             </>
         );
-    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle, handleHeaderContextMenu, renderHeaderText, colWidthStyle, renderResizeHandle]);
+    }, [columns, sortBy, sortDirection, handleSort, onSort, columnHeight, pinnedStyle, handleHeaderContextMenu, renderHeaderText, colWidthStyle, renderResizeHandle, colReorder.headerCellProps]);
 
     /**
      * 테이블 행 컨텐츠 렌더링 함수 (기존 VirtualDataTable 스타일)
@@ -2240,6 +2275,7 @@ function VirtualDataTableComponent<T>({
             ref={(el: HTMLDivElement | null) => {
                 tableBoxRef.current = el;
                 reorderBoxRef.current = el;
+                colReorderBoxRef.current = el;
             }}
             // 바꾼 열 폭(1.8.0) — 칸 · 표 폭이 이 변수를 본다
             style={resizeVars ?? undefined}
@@ -2272,6 +2308,15 @@ function VirtualDataTableComponent<T>({
                               "& thead tr[data-vdt-pinned-row] .vdt-reorder-handle": { visibility: "hidden" },
                               "& tbody tr[data-vdt-dragging] > td": { opacity: 0.45 },
                               "& [data-vdt-drop-indicator]": { backgroundColor: notion ? notionTokens.selectedBar : muiTheme.palette.primary.main },
+                          }
+                        : {}),
+                    // 열 순서 바꾸기(1.12.0) — 든 머리 칸 흐리게 · 놓을 자리 세로선 · 끄는 동안 손 모양. 터치 길게 누르기의 글자 말풍선은 막는다
+                    ...(colReorder.on
+                        ? {
+                              "& thead th[data-vdt-colkey]": { WebkitTouchCallout: "none" },
+                              "& thead th[data-vdt-col-dragging]": { opacity: 0.45 },
+                              "& [data-vdt-col-drop-indicator]": { backgroundColor: notion ? notionTokens.selectedBar : muiTheme.palette.primary.main },
+                              "&[data-vdt-col-reordering], &[data-vdt-col-reordering] *": { cursor: "grabbing !important" },
                           }
                         : {}),
                     "& .MuiTableHead-root": {
@@ -2393,6 +2438,7 @@ function VirtualDataTableComponent<T>({
             }
         >
             {reorder.indicator}
+            {colReorder.indicator}
             {/* 테이블 — autoHeight 면 가상화 없이 모든 줄을 그리고 높이는 내용을 따른다(페이지가 굴린다). */}
             {autoHeight ? (
                 // 표의 오른쪽 덧여백(framed 16px)은 가상 스크롤러용이다 — 여기서는 상자 폭을 16px 넘겨 늘 가로 막대가 섰다(1.9.2, 업무 기여도 상세 창).
