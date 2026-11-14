@@ -9,6 +9,6 @@ export { VirtualDataTable, setVirtualDataTableLoadingGate, NOTION_LINE_COLOR, NO
 export type { VirtualDataTableLoadingGateProps } from "./VirtualDataTable";
 export { HeaderMenu, HeaderMenuItem, HeaderMenuDivider, HeaderMenuIcon, HeaderFilterIcon, headerMenuAnchor, HEADER_MENU_ICON_PATHS, HEADER_MENU_ITEM_SX, HEADER_MENU_FONT_SIZE, HEADER_MENU_ICON_SIZE, HEADER_MENU_ITEM_HEIGHT, } from "./HeaderMenu";
 export type { HeaderMenuProps, HeaderMenuItemProps, HeaderMenuOption, HeaderMenuSortConfig, HeaderMenuFilterConfig, HeaderMenuSortDirection, } from "./HeaderMenu";
-export type { DataColumn, SortDirection, SortableFilter, VirtualDataTableProps, VDTMobileConfig, VDTMobileSlot, VDTColumnResizeConfig, VDTColumnWidths, VDTRowReorderConfig, } from "./types";
+export type { DataColumn, SortDirection, SortableFilter, VirtualDataTableProps, VDTMobileConfig, VDTMobileSlot, VDTColumnResizeConfig, VDTColumnWidths, VDTColumnReorderConfig, VDTRowReorderConfig, } from "./types";
 export { setMuiVirtualDataTableLocale, getMuiVirtualDataTableLocale } from "./i18n";
 export type { MuiVirtualDataTableLang } from "./i18n";

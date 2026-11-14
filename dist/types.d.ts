@@ -106,6 +106,11 @@ export interface DataColumn<T> {
     sortMenu?: boolean;
     /** false 면 이 열은 머리 우클릭 메뉴를 띄우지 않는다(브라우저 메뉴는 여전히 막는다, 1.4.0). */
     headerMenu?: boolean;
+    /**
+     * false 면 열 순서 바꾸기(columnReorder)에서 빠진다(1.12.0) — 이 열은 들 수도, 다른 열이 이 자리로 올 수도 없다.
+     * 선택 칸(체크박스) · 늘 앞에 서야 하는 칸에 준다. 고정 열(pinned) · 줄 손잡이 열은 주지 않아도 빠진다.
+     */
+    reorderable?: boolean;
 }
 /** 정렬 방향 타입 */
 export type SortDirection = "asc" | "desc";
@@ -143,6 +148,11 @@ export interface VDTMobileConfig<T> {
 export interface VDTColumnResizeConfig {
     /** 열에 minWidth 가 없을 때 줄일 수 있는 최소 폭 px — 기본 48 */
     minWidth?: number;
+}
+/** 열 순서 바꾸기 설정(1.12.0) */
+export interface VDTColumnReorderConfig {
+    /** 머리 칸을 이만큼 누르고 있어야 열을 든다 ms — 기본 400. 그 전에 움직이면 클릭 · 고르기 · 굴리기로 본다 */
+    holdMs?: number;
 }
 /** 열 키(String(column.id)) → 바꾼 폭 px(1.8.0). 없는 열은 column.width 그대로다. */
 export type VDTColumnWidths = Record<string, number>;
@@ -299,6 +309,21 @@ export interface VirtualDataTableProps<T> {
      * 폰 목록(mobile)에서는 카드 왼쪽에 손잡이가 선다. 키보드: 손잡이에 초점 → Space → ↑ ↓ → Space.
      */
     rowReorder?: VDTRowReorderConfig<T>;
+    /**
+     * 열 순서 바꾸기(1.12.0) — 머리 칸을 길게(holdMs, 기본 400ms) 누르면 열을 들고, 좌우로 끌어 놓으면 그 자리로 옮긴다.
+     * 길게 누르기 전에 움직이면 예전 그대로(정렬 클릭 · 글자 고르기 · 굴리기). 끄는 동안 Esc 로 그만둔다.
+     * 줄 손잡이 열 · 고정 열(pinned) · reorderable: false 열은 옮기지 않고, 묶음 머리(group)가 있으면 같은 묶음 안에서만 옮긴다.
+     * 폰 목록(mobile)으로 그릴 때는 끌기도 바꾼 순서도 쓰지 않는다. 끄면(기본) 종전과 같다.
+     */
+    columnReorder?: boolean | VDTColumnReorderConfig;
+    /**
+     * 바꾼 열 순서(1.12.0) — 열 키(String(column.id)) 배열. 표는 저장소를 모른다 — 소비처가 둘 곳을 정해 넘긴다.
+     * 주지 않으면 표 안에서만 기억한다(다시 그리면 사라진다). 배열에 없는 열은 원래 자리 순서를 지키고, 모르는 키는 버린다.
+     * columnReorder 가 켜졌을 때만 쓴다.
+     */
+    columnOrder?: string[];
+    /** 열 순서가 바뀌었을 때 — 놓을 때 한 번, 모든 열 키를 새 순서로(1.12.0). */
+    onColumnOrderChange?: (order: string[]) => void;
 }
 /** 줄 끌어 옮기기 설정(1.9.0) */
 export interface VDTRowReorderConfig<T> {
