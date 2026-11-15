@@ -735,6 +735,16 @@ function VirtualDataTableComponent<T>({
             columns.forEach((col, index) => {
                 // 폭을 바꿀 수 없는 열(resizable: false, 1.13.0)은 넘겨받은 폭을 쓰지 않는다 — 예전에 바꿔 저장된 폭이 남아 있어도 늘 width.
                 const w = col.resizable === false ? undefined : widths[String(col.id)];
+                // 남는 폭을 갖는 열(width 없음)은 바꾼 폭을 "최소 폭" 으로만 쓴다(1.13.1) — 고정 폭으로 박으면 모든 열이 숫자가 되어
+                // 표가 열 폭 합으로 서고, 열 몇 개를 접은 화면(분할 보기 등)에서 표 오른쪽이 비었다. 이제 그 열이 남는 폭을 채우고,
+                // 바꾼 폭은 표 최소 폭에 들어가 그보다 좁아지지 않는다.
+                const flexible = typeof col.width !== "number";
+                if (flexible && typeof w === "number" && Number.isFinite(w) && w > 0) {
+                    allFixed = false;
+                    minSum += Math.max(col.minWidth ?? resizeMinDefault, Math.round(w));
+                    changed = true;
+                    return;
+                }
                 if (typeof w === "number" && Number.isFinite(w) && w > 0) {
                     const cw = Math.max(col.minWidth ?? resizeMinDefault, Math.round(w));
                     vars[`--vdt-cw-${index}`] = `${cw}px`;
