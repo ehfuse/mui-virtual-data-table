@@ -725,6 +725,16 @@ function VirtualDataTableComponent<T>({
      * 표 폭을 100% 로 두면 모든 열이 숫자일 때 남는 폭이 열마다 나눠져 끈 폭과 그려진 폭이 어긋난다 — 그때는 표를 열 폭 합으로 세운다.
      * 남는 폭을 갖는 열(width 없음)이 있으면 표 최소 폭에 그 열의 최소 폭을 넣는다 — 옆 열을 넓히다 0 으로 접히지 않게.
      */
+    /**
+     * 남는 폭을 받을 열(1.13.2) — 모든 열이 숫자 폭이면 표(100%)의 남는 폭을 브라우저가 열마다 나눠, 폭을 못 바꾸는 열(resizable: false — 번호 칸)까지 넓어졌다
+     * (고객 목록에서 상세를 열어 열을 접으면 번호 칸이 커짐 — 사용자 지적). 그때는 폭을 바꿀 수 있는 마지막 열 하나만 남는 폭을 받는다(제 폭은 최소 폭으로).
+     */
+    const absorbIndex = useMemo(() => {
+        if (!columns.length || !columns.every((col) => typeof col.width === "number") || !columns.some((col) => col.resizable === false)) return -1;
+        for (let i = columns.length - 1; i >= 0; i -= 1) if (columns[i].resizable !== false) return i;
+        return -1;
+    }, [columns]);
+
     const computeResizeVars = useCallback(
         (widths: VDTColumnWidths): Record<string, string> => {
             const vars: Record<string, string> = {};
@@ -738,7 +748,7 @@ function VirtualDataTableComponent<T>({
                 // 남는 폭을 갖는 열(width 없음)은 바꾼 폭을 "최소 폭" 으로만 쓴다(1.13.1) — 고정 폭으로 박으면 모든 열이 숫자가 되어
                 // 표가 열 폭 합으로 서고, 열 몇 개를 접은 화면(분할 보기 등)에서 표 오른쪽이 비었다. 이제 그 열이 남는 폭을 채우고,
                 // 바꾼 폭은 표 최소 폭에 들어가 그보다 좁아지지 않는다.
-                const flexible = typeof col.width !== "number";
+                const flexible = typeof col.width !== "number" || index === absorbIndex;
                 if (flexible && typeof w === "number" && Number.isFinite(w) && w > 0) {
                     allFixed = false;
                     minSum += Math.max(col.minWidth ?? resizeMinDefault, Math.round(w));
@@ -751,6 +761,9 @@ function VirtualDataTableComponent<T>({
                     changed = true;
                     minSum += cw;
                     fixedSum += cw;
+                } else if (index === absorbIndex) {
+                    allFixed = false;
+                    minSum += col.width as number;
                 } else if (typeof col.width === "number") {
                     minSum += col.width;
                     fixedSum += col.width;
@@ -765,7 +778,7 @@ function VirtualDataTableComponent<T>({
             }
             return vars;
         },
-        [columns, resizeMinDefault],
+        [columns, resizeMinDefault, absorbIndex],
     );
     const computeResizeVarsRef = useRef(computeResizeVars);
     computeResizeVarsRef.current = computeResizeVars;
@@ -780,8 +793,13 @@ function VirtualDataTableComponent<T>({
      */
     const colWidthStyle = useCallback(
         (col: DataColumn<T>, index: number, minWidth: string | number | undefined): React.CSSProperties => {
-            if (!resizeOn) return { width: col.width, minWidth };
             const name = `--vdt-cw-${index}`;
+            if (index === absorbIndex) {
+                // 남는 폭을 받는 열 — 폭은 비우고(auto) 제 폭 · 끌어 바꾼 폭을 최소 폭으로.
+                if (!resizeOn) return { minWidth: col.width };
+                return { minWidth: `var(${name}, ${cssPx(col.width)})` };
+            }
+            if (!resizeOn) return { width: col.width, minWidth };
             const w = cssPx(col.width);
             const m = cssPx(minWidth);
             return {
@@ -789,7 +807,7 @@ function VirtualDataTableComponent<T>({
                 minWidth: m !== undefined ? `var(${name}, ${m})` : `var(${name})`,
             };
         },
-        [resizeOn],
+        [resizeOn, absorbIndex],
     );
 
     // 고정 열(pinned: "left")이 붙을 왼쪽 자리 — 앞쪽 고정 열 폭의 합. 고정 열이 아니면 없다.
