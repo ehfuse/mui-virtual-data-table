@@ -111,6 +111,11 @@ export interface DataColumn<T> {
      * 선택 칸(체크박스) · 늘 앞에 서야 하는 칸에 준다. 고정 열(pinned) · 줄 손잡이 열은 주지 않아도 빠진다.
      */
     reorderable?: boolean;
+    /**
+     * false 면 열 폭 끌어 바꾸기(columnResize)에서 빠진다(1.13.0) — 머리 칸 오른쪽 경계 손잡이를 그리지 않고, columnWidths 에 이 열의 폭이 있어도 쓰지 않는다
+     * (늘 width). 줄 번호 · 선택 칸처럼 폭이 정해진 칸에 준다.
+     */
+    resizable?: boolean;
 }
 /** 정렬 방향 타입 */
 export type SortDirection = "asc" | "desc";
