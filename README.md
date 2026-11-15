@@ -267,6 +267,7 @@ const [widths, setWidths] = useAccountSetting("customer.list"); // Record<column
 />
 ```
 
+- A column with `resizable: false` (1.13.0) gets no grip and ignores any width for it in `columnWidths` — it always uses its own `width` (row numbers, checkboxes).
 - While dragging only CSS variables on the table box change — rows are not re-rendered, virtualization and horizontal scroll stay as they are.
 - The click that follows a drag is swallowed, so releasing over a header never sorts / opens the header menu.
 - A flexible column (no `width`) keeps a minimum of its `minWidth` (or the resize minimum) once anything was resized; when every column ends up

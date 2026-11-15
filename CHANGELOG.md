@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.0
+
+### Added
+
+- 열 `resizable: false` — 열 폭 끌어 바꾸기(`columnResize`)에서 그 열만 뺀다. 머리 칸 경계 손잡이를 그리지 않고, `columnWidths` 에 그 열의 폭이 있어도 쓰지 않는다(늘 `width`).
+  줄 번호 · 선택 칸처럼 폭이 정해진 칸에 준다.
+
 ## 1.12.0
 
 ### Added

@@ -733,7 +733,8 @@ function VirtualDataTableComponent<T>({
             let minSum = 0;
             let fixedSum = 0;
             columns.forEach((col, index) => {
-                const w = widths[String(col.id)];
+                // 폭을 바꿀 수 없는 열(resizable: false, 1.13.0)은 넘겨받은 폭을 쓰지 않는다 — 예전에 바꿔 저장된 폭이 남아 있어도 늘 width.
+                const w = col.resizable === false ? undefined : widths[String(col.id)];
                 if (typeof w === "number" && Number.isFinite(w) && w > 0) {
                     const cw = Math.max(col.minWidth ?? resizeMinDefault, Math.round(w));
                     vars[`--vdt-cw-${index}`] = `${cw}px`;
@@ -1012,7 +1013,7 @@ function VirtualDataTableComponent<T>({
     /** 머리 칸 오른쪽 경계의 손잡이 — 모양(호버 때 얇은 선)은 표 상자 sx 의 [data-vdt-resize] 가 정한다. */
     const renderResizeHandle = useCallback(
         (col: DataColumn<T>) =>
-            resizeOn && col.id !== REORDER_COLUMN_ID ? (
+            resizeOn && col.id !== REORDER_COLUMN_ID && col.resizable !== false ? (
                 <span
                     data-vdt-resize=""
                     data-vdt-col={columns.indexOf(col)}
