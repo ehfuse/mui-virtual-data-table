@@ -294,6 +294,9 @@ function VirtualDataTableComponent<T>({
         () => (reorder.handleColumn ? [reorder.handleColumn, ...orderedColumns] : orderedColumns),
         [reorder.handleColumn, orderedColumns],
     );
+    // 열 수 — 표 부품 안(spacer 행 colSpan)에서 읽는다(부품을 다시 만들지 않게, 1.14.1).
+    const columnCountRef = useRef(columns.length);
+    columnCountRef.current = columns.length;
     // 바깥 스크롤(1.7.0) — 페이지가 굴리고 표는 그 스크롤에 맞춰 보이는 줄만 그린다(높이는 내용만큼)
     const external = Boolean(scrollParent);
     // 높이를 내용에 맡기는가 — autoHeight(가상화 없음) · 바깥 스크롤(가상화 있음)
@@ -1999,10 +2002,11 @@ function VirtualDataTableComponent<T>({
                         tableLayout,
                         // 폰 목록은 칸 하나라 열 폭 합(최소 폭)을 두지 않는다 — 두면 화면 밖으로 밀린다
                         // 끌어 바꾸기를 켜면 표 폭 · 최소 폭도 표 상자의 CSS 변수를 본다(끄는 동안 부품을 다시 만들지 않게).
+                        // 열 폭 합(최소 폭)은 표 상자의 변수 --vdt-tmin-d 로 받는다(1.14.1) — 분할을 열고 닫아 보이는 열이 바뀌어도 표를 다시 만들지 않게.
                         ...(resizeOn
-                            ? { width: "var(--vdt-tw, 100%)", minWidth: `var(--vdt-tmin, ${tableMinWidth ?? 0}px)` }
-                            : tableMinWidth && !mobileList
-                              ? { minWidth: tableMinWidth }
+                            ? { width: "var(--vdt-tw, 100%)", minWidth: "var(--vdt-tmin, var(--vdt-tmin-d, 0px))" }
+                            : !mobileList
+                              ? { minWidth: "var(--vdt-tmin-d, 0px)" }
                               : {}),
                         // 틀 없이 그릴 때는 오른쪽 덧여백이 가로 넘침(가로 막대)을 만든다 — 표가 상자 폭에 꼭 맞게 둔다.
                         marginRight: framed ? "16px" : 0,
@@ -2222,7 +2226,7 @@ function VirtualDataTableComponent<T>({
                         {hasFooter && (
                             <tr aria-hidden style={{ height: "100%" }}>
                                 <td
-                                    colSpan={columns.length}
+                                    colSpan={columnCountRef.current}
                                     style={{ padding: 0, border: 0 }}
                                 />
                             </tr>
@@ -2299,12 +2303,11 @@ function VirtualDataTableComponent<T>({
             hasFooter,
             notion,
             notionTokens,
-            // spacer 행의 colSpan 계산에 사용 (컬럼 구조 변경 시 components 재생성)
-            columns,
+            // 열(spacer 행의 colSpan) · 열 폭 합(표 최소 폭)은 걸지 않는다(1.14.1) — ref · 표 상자 변수로 읽는다. 걸면 렌더마다 열 배열을 새로 만들거나
+            // 분할을 열어 보이는 열이 바뀌는 화면에서 표(<table>)가 통째로 갈려 들어가 깜빡였다(고객 목록 분할 상세 — 사용자 지적).
             tableLayout,
             framed,
             autoRowHeight,
-            tableMinWidth,
             mobileList,
             external,
             resizeOn,
@@ -2373,7 +2376,7 @@ function VirtualDataTableComponent<T>({
                 colReorderBoxRef.current = el;
             }}
             // 바꾼 열 폭(1.8.0) — 칸 · 표 폭이 이 변수를 본다
-            style={absorbIndex >= 0 ? ({ ...(resizeVars ?? {}), "--vdt-fs": String(flexScale) } as React.CSSProperties) : (resizeVars ?? undefined)}
+            style={{ ...(resizeVars ?? {}), ...(absorbIndex >= 0 ? { "--vdt-fs": String(flexScale) } : {}), "--vdt-tmin-d": `${mobileList ? 0 : (tableMinWidth ?? 0)}px` } as React.CSSProperties}
             sx={
                 {
                     position: "relative",
