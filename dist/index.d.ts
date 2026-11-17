@@ -7,6 +7,8 @@
  */
 export { VirtualDataTable, setVirtualDataTableLoadingGate, NOTION_LINE_COLOR, NOTION_LINE_COLOR_DARK } from "./VirtualDataTable";
 export type { VirtualDataTableLoadingGateProps } from "./VirtualDataTable";
+export { formatVdtDate, setVirtualDataTableDateFormats, getVirtualDataTableDateFormat } from "./dateFormat";
+export type { VDTDateFormat } from "./dateFormat";
 export { HeaderMenu, HeaderMenuItem, HeaderMenuDivider, HeaderMenuIcon, HeaderFilterIcon, headerMenuAnchor, HEADER_MENU_ICON_PATHS, HEADER_MENU_ITEM_SX, HEADER_MENU_FONT_SIZE, HEADER_MENU_ICON_SIZE, HEADER_MENU_ITEM_HEIGHT, } from "./HeaderMenu";
 export type { HeaderMenuProps, HeaderMenuItemProps, HeaderMenuOption, HeaderMenuSortConfig, HeaderMenuFilterConfig, HeaderMenuSortDirection, } from "./HeaderMenu";
 export type { DataColumn, SortDirection, SortableFilter, VirtualDataTableProps, VDTMobileConfig, VDTMobileSlot, VDTColumnResizeConfig, VDTColumnWidths, VDTColumnReorderConfig, VDTRowReorderConfig, } from "./types";

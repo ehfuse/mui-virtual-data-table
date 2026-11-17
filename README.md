@@ -245,6 +245,22 @@ Pinned rows example (1.3.0):
 notion defaults (1.2.0): rowHeight 48, header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
 string `emptyMessage` = one light grey line under the header, footer cells use the body padding.
 
+### Date columns (1.15.0)
+
+Give a column `format` and VDT renders any date value the same way — `"date"` · `"datetime"` · `"time"` · `"month"`.
+
+```tsx
+{ id: "consulted_at", text: "상담 일시", width: 130, align: "center", format: "datetime" } // 2026-08-27 10:18:00 → 26-08-27 10:18
+{ id: "join", text: "입사일", format: "date", value: (row) => row.employee.join_date }     // value: where to read the date
+```
+
+- Wall-clock strings (`2026-08-27`, `2026-08-27 10:18:00`, `2026-08-27T10:18`) are read as written — no time-zone shift.
+- `Date`, ms timestamps and strings with a zone (`…Z`, `…+09:00`) are shown in the device's local time.
+- Date cells never wrap. When the first column is a date column (`"date"` / `"datetime"`), it is fixed at 160px (`resizable: false`).
+- A date without a time under `"datetime"` shows the date only. Unreadable text is shown as is.
+- App-wide patterns: `setVirtualDataTableDateFormats({ date: "YY-MM-DD", datetime: "YY-MM-DD HH:mm", time: "HH:mm", month: "YYYY-MM" })` (these are the defaults). Tokens: `YYYY YY MM M DD D HH H mm ss`.
+- Only columns that must look different use `render`; inside it, `formatVdtDate(value, "date")` gives the same text.
+
 ### Page scroll (1.7.0)
 
 `scrollParent={element}` virtualizes against an outer scroller (react-virtuoso `customScrollParent`) — the table has no scroller of its own

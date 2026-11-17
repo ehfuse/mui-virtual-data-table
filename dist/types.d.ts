@@ -1,3 +1,4 @@
+import type { VDTDateFormat } from "./dateFormat";
 /**
  * types.ts - Virtual Data Table Types
  *
@@ -38,6 +39,13 @@ export interface DataColumn<T> {
     align?: "left" | "center" | "right";
     style?: React.CSSProperties;
     render?: (item: T, index: number) => React.ReactNode;
+    /**
+     * 날짜 칸 서식(1.15.0) — "date" | "datetime" | "time" | "month". 칸 값(value 또는 item[id])이 어떤 날짜 꼴이든 앱 서식대로 그린다
+     * (setVirtualDataTableDateFormats, 기본 YY-MM-DD · YY-MM-DD HH:mm · HH:mm · YYYY-MM). render 가 있으면 render 가 그린다.
+     */
+    format?: VDTDateFormat;
+    /** 칸 값 꺼내기(1.15.0) — format 이 읽을 값. 없으면 item[id]. */
+    value?: (item: T) => unknown;
     group?: string;
     footer?: (data: T[]) => React.ReactNode;
     footerColSpan?: number;

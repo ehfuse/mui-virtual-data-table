@@ -8,6 +8,8 @@
 
 export { VirtualDataTable, setVirtualDataTableLoadingGate, NOTION_LINE_COLOR, NOTION_LINE_COLOR_DARK } from "./VirtualDataTable";
 export type { VirtualDataTableLoadingGateProps } from "./VirtualDataTable";
+export { formatVdtDate, setVirtualDataTableDateFormats, getVirtualDataTableDateFormat } from "./dateFormat";
+export type { VDTDateFormat } from "./dateFormat";
 export {
     HeaderMenu,
     HeaderMenuItem,

@@ -34,6 +34,10 @@ import React, {
     memo,
     useState,
 } from "react";
+import { formatVdtDate } from "./dateFormat";
+
+/** 첫 칸이 날짜 칸일 때의 고정 폭(1.15.0). */
+const FIRST_DATE_COLUMN_WIDTH = 160;
 import {
     Box,
     Table,
@@ -119,6 +123,16 @@ function applyResizeVars(el: HTMLElement, vars: Record<string, string>) {
  * 1.11.3 에서 한 단계 진하게 했고(예전 #e6e6e3 · #dedddb 는 밝은 모니터에서 잘 안 보였다), 1.11.4 에서 두 단계를 하나로 합쳤다
  * (2026-11-03 사용자 지적 "머리 아래 선만 더 흐리다 — 통일").
  */
+
+/** 칸 내용 — render 가 있으면 그것, format 이면 날짜 서식(1.15.0), 아니면 값 글. */
+function cellContent<T>(column: DataColumn<T>, item: T, index: number, keepZero = false): React.ReactNode {
+    if (column.render) return column.render(item, index);
+    const raw = column.value ? column.value(item) : (item as any)[column.id];
+    if (column.format) return formatVdtDate(raw, column.format);
+    // 표 칸은 예전처럼 거짓 값(0 포함)을 빈칸으로, 폰 카드는 0 을 그대로(이전 동작 그대로).
+    return keepZero ? String(raw ?? "") : String(raw || "");
+}
+
 export const NOTION_LINE_COLOR = "#d9d8d5";
 /** 어두운 화면의 노션풍 선 색. */
 export const NOTION_LINE_COLOR_DARK = "#3b434e";
@@ -291,10 +305,16 @@ function VirtualDataTableComponent<T>({
             onColumnOrderChangeRef.current?.(order);
         }, []),
     });
-    const columns = useMemo(
-        () => (reorder.handleColumn ? [reorder.handleColumn, ...orderedColumns] : orderedColumns),
-        [reorder.handleColumn, orderedColumns],
-    );
+    const columns = useMemo(() => {
+        // 첫 칸이 날짜 칸(format "date" · "datetime")이면 폭 160 고정(1.15.0 — 2026-11-17 사용자 지정, 번호 칸 대신 날짜가 첫 칸인 상담 목록 등).
+        // 줄 끌기 손잡이 자리(왼쪽 24)까지 들어가는 폭이고, 끌어 바꾸지 못한다(resizable: false — 남는 폭은 다른 열이 나눈다).
+        const first = orderedColumns[0];
+        const fixed =
+            first && (first.format === "date" || first.format === "datetime")
+                ? [{ ...first, width: FIRST_DATE_COLUMN_WIDTH, resizable: false as const }, ...orderedColumns.slice(1)]
+                : orderedColumns;
+        return reorder.handleColumn ? [reorder.handleColumn, ...fixed] : fixed;
+    }, [reorder.handleColumn, orderedColumns]);
     // 열 수 — 표 부품 안(spacer 행 colSpan)에서 읽는다(부품을 다시 만들지 않게, 1.14.1).
     const columnCountRef = useRef(columns.length);
     columnCountRef.current = columns.length;
@@ -1656,7 +1676,7 @@ function VirtualDataTableComponent<T>({
     const renderMobileRow = useCallback(
         (item: T, index: number): React.ReactNode => {
             if (mobileConfig?.renderRow) return mobileConfig.renderRow(item, index);
-            const cell = (c: DataColumn<T>) => (c.render ? c.render(item, index) : String((item as any)[c.id] ?? ""));
+            const cell = (c: DataColumn<T>) => cellContent(c, item, index, true);
             const { title, thumb, badge, sub, meta } = mobileSlots;
             return (
                 <Box sx={{ display: "flex", gap: "12px", alignItems: "flex-start", py: "12px", px: "14px", minWidth: 0 }}>
@@ -1778,9 +1798,7 @@ function VirtualDataTableComponent<T>({
                     : 1;
                 coveredByColSpan = colSpan - 1;
                 const cellStart = perfDebugEnabled ? performance.now() : 0;
-                const cellValue = column.render
-                    ? column.render(item, index)
-                    : String((item as any)[column.id] || "");
+                const cellValue = cellContent(column, item, index);
 
                 if (perfDebugEnabled) {
                     const cellDuration = performance.now() - cellStart;
@@ -1825,9 +1843,12 @@ function VirtualDataTableComponent<T>({
                             // 합친 칸은 폭을 박지 않는다 — 열 폭은 머리 줄이 정하고, 박으면 합친 폭이 한 열 폭으로 줄어든다.
                             ...(colSpan > 1 ? {} : colWidthStyle(column, columnIndex, column.width ?? column.minWidth)),
                             ...(column.primary ? { fontSize: 15 } : {}),
+                            // 날짜 칸은 꺾지 않는다(1.15.0 — "26. 11. 13 16:05" 가 날짜와 시각 사이에서 두 줄이 됐다).
+                            ...(column.format ? { whiteSpace: "nowrap" as const } : {}),
                             ...column.style,
                             ...(column.cellStyle ? column.cellStyle(item, index) : {}),
-                            padding: customPadding ? column.cellPadding : "8px 16px",
+                            // 줄 끌기 손잡이(⋮⋮)가 첫 칸 왼쪽에 떠 있다 — 내용이 그 밑에 깔리지 않게 왼쪽 여백을 손잡이 자리만큼(1.15.0, 날짜가 첫 칸인 상담 목록).
+                            padding: customPadding ? column.cellPadding : withDragHandle && rowDragOn ? "8px 16px 8px 24px" : "8px 16px",
                             ...pinnedStyle(column, false),
                             // 손잡이가 칸 안에 absolute 로 서게(고정 칸은 sticky 라 이미 기준이 된다).
                             ...(withDragHandle && !pinned ? { position: "relative" as const } : {}),

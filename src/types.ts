@@ -1,3 +1,4 @@
+import type { VDTDateFormat } from "./dateFormat";
 /**
  * types.ts - Virtual Data Table Types
  *
@@ -40,6 +41,13 @@ export interface DataColumn<T> {
     align?: "left" | "center" | "right"; // 텍스트 정렬 방향
     style?: React.CSSProperties; // 추가 스타일
     render?: (item: T, index: number) => React.ReactNode; // 커스텀 렌더링 함수
+    /**
+     * 날짜 칸 서식(1.15.0) — "date" | "datetime" | "time" | "month". 칸 값(value 또는 item[id])이 어떤 날짜 꼴이든 앱 서식대로 그린다
+     * (setVirtualDataTableDateFormats, 기본 YY-MM-DD · YY-MM-DD HH:mm · HH:mm · YYYY-MM). render 가 있으면 render 가 그린다.
+     */
+    format?: VDTDateFormat;
+    /** 칸 값 꺼내기(1.15.0) — format 이 읽을 값. 없으면 item[id]. */
+    value?: (item: T) => unknown;
     group?: string; // 그룹 헤더명
     footer?: (data: T[]) => React.ReactNode; // 하단 합계(tfoot) 셀 렌더링 함수 (전체 표시 데이터 전달)
     footerColSpan?: number; // 하단 합계 셀이 차지할 컬럼 수 (이만큼 뒤 컬럼의 footer 셀은 생략됨)
