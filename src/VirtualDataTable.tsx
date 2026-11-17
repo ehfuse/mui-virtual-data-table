@@ -2781,11 +2781,9 @@ function VirtualDataTableComponent<T>({
             {data.length === 0 && !loading && !hasPinnedRows && !(notion && typeof emptyMessage === "string") && (
                 <Box
                     sx={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        // 높이를 내용에 맞추는 표(autoHeight · scrollParent — 폰 셸 목록)는 표 높이가 0 이라 덮는 상자에 안내가 보이지 않았다(1.20.1,
+                        // 2026-11-17 업무함 문자 주소록 — 빈 카드 한 줄만 보임). 그때는 제자리에 그린다 — 여백은 안내 요소가 정한다(글자 안내는 위아래 48).
+                        ...(sizeAuto ? { position: "static", py: typeof emptyMessage === "string" ? 6 : 0 } : { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }),
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
