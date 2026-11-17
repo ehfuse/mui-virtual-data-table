@@ -825,15 +825,16 @@ function VirtualDataTableComponent<T>({
         });
         return map;
     }, [columns, resizeOn]);
-    // 표 최소 폭 — minWidth 를 준 열이 있을 때만. 열마다 width(숫자) 또는 minWidth 의 합이고, 틀이 좁으면 가로로 민다.
+    // 표 최소 폭 — minWidth 를 준 열이 있거나 남는 폭을 받는 열(absorbIndex)이 있을 때. 열마다 width(숫자) 또는 minWidth 의 합이고, 틀이 좁으면 가로로 민다.
+    // 남는 폭을 받는 열은 폭을 비워(auto) 두므로, 표 최소 폭에 제 폭이 들지 않으면 틀이 좁을 때 그 열이 0 이 되어 글이 칸 밖으로 꺾였다(1.13.3 — 고객 목록 마지막 "최근 방문").
     const tableMinWidth = useMemo(() => {
-        if (!columns.some((col) => typeof col.minWidth === "number")) return undefined;
+        if (absorbIndex < 0 && !columns.some((col) => typeof col.minWidth === "number")) return undefined;
         return columns.reduce(
             (sum, col) =>
                 sum + (typeof col.width === "number" ? col.width : typeof col.minWidth === "number" ? col.minWidth : 0),
             0,
         );
-    }, [columns]);
+    }, [columns, absorbIndex]);
     /** 고정 열 칸의 sticky 자리. 머리 칸은 본문 고정 칸보다 위(zIndex 3)에 선다. */
     const pinnedStyle = useCallback(
         (col: DataColumn<T>, head: boolean): React.CSSProperties => {
