@@ -342,7 +342,9 @@ export interface VirtualDataTableProps<T> {
      * **그 손잡이만** 끌린다 — 줄의 나머지 자리는 그대로 끌어서 가로로 민다(overlay-scrollbar). 놓는 쪽은 dataTransfer 의 type 으로 받는다.
      * getData 가 돌려준 글이 실린다(여러 줄을 함께 옮기려면 부르는 쪽이 고른 줄들을 묶어 돌려준다).
      */
-    rowDrag?: { type: string; getData: (item: T, index: number) => string; label?: string };
+    /** canDrag(1.18.0) — false 인 줄은 손잡이를 그리지 않는다(드라이브의 폴더 줄처럼 옮길 수 없는 줄). */
+    /** onStart · onEnd(1.19.0) — 끌기 시작(실린 줄들 — 고른 줄을 끌면 고른 줄 모두) · 끝(놓았든 그만뒀든). 끄는 동안 놓을 곳이 받을지 판단할 상태를 들 때. */
+    rowDrag?: { type: string; getData: (item: T, index: number) => string; label?: string; canDrag?: (item: T, index: number) => boolean; onStart?: (items: T[]) => void; onEnd?: () => void };
     /**
      * 체크 칸 없이 여러 줄 고르기(1.16.0) — Ctrl(⌘)+클릭은 그 줄을 넣고 빼며 onRowClick 을 부르지 않는다(상세가 열리지 않는다).
      * Shift+클릭은 마지막으로 누른 줄부터 그 줄까지. 그냥 클릭 · Esc 는 고른 것을 비운다. 고른 줄은 옅은 바탕으로 칠한다.

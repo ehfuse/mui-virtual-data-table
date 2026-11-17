@@ -1902,7 +1902,7 @@ function VirtualDataTableComponent<T>({
                             ...(withDragHandle && !pinned ? { position: "relative" as const } : {}),
                         }}
                     >
-                        {withDragHandle ? (
+                        {withDragHandle && rowDragRef.current?.canDrag?.(item, index) !== false ? (
                             <span
                                 className="vdt-row-drag"
                                 role="button"
@@ -1917,13 +1917,16 @@ function VirtualDataTableComponent<T>({
                                     const idOf = (row: T, i: number) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i);
                                     if (pickedIds.length > 1 && pickedIds.includes(idOf(item, index))) {
                                         const rows = dataRef.current;
-                                        const values = rows.map((row, i) => (pickedIds.includes(idOf(row, i)) ? cfg.getData(row, i) : null)).filter((v): v is string => v !== null);
-                                        e.dataTransfer.setData(cfg.type, values.join(","));
+                                        const carried = rows.flatMap((row, i) => (pickedIds.includes(idOf(row, i)) ? [{ row, i }] : []));
+                                        e.dataTransfer.setData(cfg.type, carried.map(({ row, i }) => cfg.getData(row, i)).join(","));
+                                        cfg.onStart?.(carried.map(({ row }) => row));
                                     } else {
                                         e.dataTransfer.setData(cfg.type, cfg.getData(item, index));
+                                        cfg.onStart?.([item]);
                                     }
                                     e.dataTransfer.effectAllowed = "move";
                                 }}
+                                onDragEnd={() => rowDragRef.current?.onEnd?.()}
                                 // 줄 누름 · 끌어서 굴리기로 번지지 않게
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
