@@ -30,6 +30,7 @@ import React, {
     useMemo,
     useRef,
     useEffect,
+    useLayoutEffect,
     memo,
     useState,
 } from "react";
@@ -752,7 +753,9 @@ function VirtualDataTableComponent<T>({
      * 틀 폭이 바뀌어도 칸을 다시 그리지 않는다. 남는 폭이 없으면 1(표가 열 폭 합으로 서고 옆으로 민다).
      */
     const [flexScale, setFlexScale] = useState(1);
-    useEffect(() => {
+    // 그리기 전에 잰다(1.14.3) — useEffect 면 열이 바뀐 화면(분할을 열어 열을 접음)이 지난 배율로 한 번 그려져 표가 틀보다 넓어지고
+    // 줄이 개행됐다가 돌아왔다(사용자 지적 "분할 열 때 목록이 흔들린다"). 틀 폭 변화(ResizeObserver)는 변수를 상자에 바로 적어 한 프레임 늦지 않게 한다.
+    useLayoutEffect(() => {
         const box = tableBoxRef.current;
         if (absorbIndex < 0 || !box || typeof ResizeObserver === "undefined") return;
         const fixedSum = columns.reduce((sum, col) => sum + (col.resizable === false ? (col.width as number) : 0), 0);
@@ -760,6 +763,7 @@ function VirtualDataTableComponent<T>({
         const measure = () => {
             const avail = box.clientWidth;
             const next = flexSum > 0 && avail > 0 ? Math.max(1, Math.floor(((avail - fixedSum) / flexSum) * 1000) / 1000) : 1;
+            box.style.setProperty("--vdt-fs", String(next));
             setFlexScale((prev) => (Math.abs(prev - next) > 0.001 ? next : prev));
         };
         measure();
