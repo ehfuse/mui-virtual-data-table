@@ -38,6 +38,8 @@ import { formatVdtDate } from "./dateFormat";
 
 /** 첫 칸이 날짜 칸일 때의 고정 폭(1.15.0). */
 const FIRST_DATE_COLUMN_WIDTH = 160;
+/** 줄 끌기 손잡이 자리(왼쪽) — 손잡이(왼쪽 4 + 폭 16) 오른쪽에 4 를 띄운다. */
+const ROW_DRAG_LANE = 24;
 import {
     Box,
     Table,
@@ -353,8 +355,14 @@ function VirtualDataTableComponent<T>({
             first && (first.format === "date" || first.format === "datetime")
                 ? [{ ...first, width: FIRST_DATE_COLUMN_WIDTH, resizable: false as const }, ...orderedColumns.slice(1)]
                 : orderedColumns;
-        return reorder.handleColumn ? [reorder.handleColumn, ...fixed] : fixed;
-    }, [reorder.handleColumn, orderedColumns]);
+        // 가운데 맞춤 첫 칸(체크 칸 등) + 줄 끌기(1.20.0 — 2026-11-17 사용자 지적 "첫 칸이 체크박스일 때 드래그 핸들 위치가 애매") — 손잡이 자리(왼쪽 24)만큼 칸을 넓힌다.
+        // 넓히지 않으면 52 칸 가운데의 체크 상자가 손잡이와 겹쳤다. 머리 칸도 같은 여백이라 전체 고르기 상자와 줄이 맞는다.
+        const lane = rowDragOn && fixed[0] && fixed[0].align === "center" && typeof fixed[0].width === "number" && fixed[0].cellPadding === undefined;
+        const laned = lane ? [{ ...fixed[0], width: (fixed[0].width as number) + ROW_DRAG_LANE, resizable: false as const }, ...fixed.slice(1)] : fixed;
+        return reorder.handleColumn ? [reorder.handleColumn, ...laned] : laned;
+    }, [reorder.handleColumn, orderedColumns, rowDragOn]);
+    /** 손잡이 자리만큼 넓힌 첫 칸의 id(없으면 null) — 머리 · 본문 칸이 같은 여백을 쓴다. */
+    const dragLaneId = rowDragOn && !reorder.handleColumn && columns[0] && columns[0].align === "center" && columns[0].cellPadding === undefined && typeof columns[0].width === "number" ? String(columns[0].id) : null;
     // 열 수 — 표 부품 안(spacer 행 colSpan)에서 읽는다(부품을 다시 만들지 않게, 1.14.1).
     const columnCountRef = useRef(columns.length);
     columnCountRef.current = columns.length;
@@ -1357,6 +1365,7 @@ function VirtualDataTableComponent<T>({
                             onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                             // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
                             {...colReorder.headerCellProps(col)}
+                            data-vdt-drag-lane={dragLaneId === String(col.id) ? "" : undefined}
                             style={{
                                 ...colWidthStyle(col, colIndex, col.width ?? col.minWidth),
                                 ...col.style,
@@ -1873,6 +1882,8 @@ function VirtualDataTableComponent<T>({
                         rowSpan={span > 1 ? span : undefined}
                         colSpan={colSpan > 1 ? colSpan : undefined}
                         data-vdt-pad={customPadding ? "" : undefined}
+                        data-vdt-drag-cell={withDragHandle && rowDragOn ? "" : undefined}
+                        data-vdt-drag-lane={withDragHandle && rowDragOn && dragLaneId === String(column.id) ? "" : undefined}
                         data-vdt-pinned={pinned ? "" : undefined}
                         data-vdt-cell-click={onCellClick ? "" : undefined}
                         onClick={
@@ -2523,6 +2534,13 @@ function VirtualDataTableComponent<T>({
                                   "&:hover": { color: muiTheme.palette.text.primary, backgroundColor: notion ? notionTokens.hoverBg : "rgba(0,0,0,.06)" },
                               },
                               "& tbody tr:hover .vdt-row-drag, & .vdt-row-drag:focus-visible": { opacity: 1 },
+                              // 손잡이 자리(1.20.0) — 노션풍 칸 여백(0 14px !important)이 인라인 24 를 덮어 내용이 손잡이 밑에 깔렸다. 여기서 다시 준다.
+                              "& tbody tr td[data-vdt-drag-cell]:not([data-vdt-pad])": { paddingLeft: `${ROW_DRAG_LANE}px !important` },
+                              // 넓힌 가운데 첫 칸은 머리 · 본문 모두 왼쪽 24 · 오른쪽 4 — 내용이 손잡이 오른쪽 자리의 가운데에 선다.
+                              "& thead tr th[data-vdt-drag-lane], & tbody tr td[data-vdt-drag-lane]:not([data-vdt-pad])": {
+                                  paddingLeft: `${ROW_DRAG_LANE}px !important`,
+                                  paddingRight: "4px !important",
+                              },
                           }
                         : {}),
                     // 줄 끌어 옮기기(1.9.0) — 손잡이 · 끌던 줄 흐리게 · 놓을 자리 선. 줄 DOM 은 속성만 바뀌고 React 는 다시 그리지 않는다

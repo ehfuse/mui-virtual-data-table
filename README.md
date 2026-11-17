@@ -271,6 +271,9 @@ Give a column `format` and VDT renders any date value the same way — `"date"` 
 - With `rowDrag`, dragging one of the picked rows carries all of them (`getData` values joined with `,`).
 - 1.17.0: on by default when `onRowClick` is set (not in the phone list); pass `false` to turn it off.
 - Checkbox lists can own the picks: `multiSelect={{ selected: checkedIds, onChange: setCheckedIds }}` — then a plain click or Esc does not clear them.
+- `rowDrag` handle (⋮⋮) floats at the left of the first cell, which keeps a 24px left gap for it (also in `variant="notion"`, 1.20.0).
+  A centered first column with a numeric `width` (a checkbox column) is widened by 24px instead, and its header gets the same gap,
+  so the checkbox stays clear of the handle and lines up with the select-all box.
 
 ```tsx
 <VirtualDataTable multiSelect={{ onChange: (ids) => setPicked(ids) }} rowDrag={{ type: "x-item", getData: (row) => String(row.seq) }} ... />
