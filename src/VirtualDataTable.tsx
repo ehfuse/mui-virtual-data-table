@@ -735,6 +735,28 @@ function VirtualDataTableComponent<T>({
         return -1;
     }, [columns]);
 
+    /**
+     * 남는 폭 나누기(1.13.4) — 폭을 못 바꾸는 열(번호)은 제 px 그대로 두고, 나머지 열이 틀의 남는 폭을 제 폭 비율대로 나눠 갖는다
+     * (사용자 지적 "번호는 px 고정이고 나머지는 늘어나야지 — 마지막 칸만 넓어진다"). 배율은 표 상자의 CSS 변수 --vdt-fs 하나라
+     * 틀 폭이 바뀌어도 칸을 다시 그리지 않는다. 남는 폭이 없으면 1(표가 열 폭 합으로 서고 옆으로 민다).
+     */
+    const [flexScale, setFlexScale] = useState(1);
+    useEffect(() => {
+        const box = tableBoxRef.current;
+        if (absorbIndex < 0 || !box || typeof ResizeObserver === "undefined") return;
+        const fixedSum = columns.reduce((sum, col) => sum + (col.resizable === false ? (col.width as number) : 0), 0);
+        const flexSum = columns.reduce((sum, col) => sum + (col.resizable === false ? 0 : (col.width as number)), 0);
+        const measure = () => {
+            const avail = box.clientWidth;
+            const next = flexSum > 0 && avail > 0 ? Math.max(1, Math.floor(((avail - fixedSum) / flexSum) * 1000) / 1000) : 1;
+            setFlexScale((prev) => (Math.abs(prev - next) > 0.001 ? next : prev));
+        };
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(box);
+        return () => observer.disconnect();
+    }, [absorbIndex, columns]);
+
     const computeResizeVars = useCallback(
         (widths: VDTColumnWidths): Record<string, string> => {
             const vars: Record<string, string> = {};
@@ -798,6 +820,12 @@ function VirtualDataTableComponent<T>({
                 // 남는 폭을 받는 열 — 폭은 비우고(auto) 제 폭 · 끌어 바꾼 폭을 최소 폭으로.
                 if (!resizeOn) return { minWidth: col.width };
                 return { minWidth: `var(${name}, ${cssPx(col.width)})` };
+            }
+            // 남는 폭 나누기(1.13.4) — 폭을 바꿀 수 있는 열은 제 폭 × 배율(--vdt-fs), 최소는 제 폭. 끌어 바꾼 폭(--vdt-cw-n)이 있으면 그것.
+            if (absorbIndex >= 0 && col.resizable !== false && typeof col.width === "number") {
+                const scaled = `calc(${col.width}px * var(--vdt-fs, 1))`;
+                if (!resizeOn) return { width: scaled, minWidth: col.width };
+                return { width: `var(${name}, ${scaled})`, minWidth: `var(${name}, ${col.width}px)` };
             }
             if (!resizeOn) return { width: col.width, minWidth };
             const w = cssPx(col.width);
@@ -2308,7 +2336,7 @@ function VirtualDataTableComponent<T>({
                 colReorderBoxRef.current = el;
             }}
             // 바꾼 열 폭(1.8.0) — 칸 · 표 폭이 이 변수를 본다
-            style={resizeVars ?? undefined}
+            style={absorbIndex >= 0 ? ({ ...(resizeVars ?? {}), "--vdt-fs": String(flexScale) } as React.CSSProperties) : (resizeVars ?? undefined)}
             sx={
                 {
                     position: "relative",
