@@ -241,6 +241,7 @@ function VirtualDataTableComponent<T>({
     onColumnWidthsChange,
     rowReorder,
     rowDrag,
+    multiSelect,
     columnReorder,
     columnOrder,
     onColumnOrderChange,
@@ -271,6 +272,39 @@ function VirtualDataTableComponent<T>({
     const rowDragRef = useRef(rowDrag);
     rowDragRef.current = rowDrag;
     const rowDragOn = Boolean(rowDrag);
+
+    // 여러 줄 고르기(1.16.0) — 고른 줄 id 와 Shift 범위의 기준 줄. 줄을 다시 그리지 않게 칠하기는 표 상자의 CSS 규칙으로 한다.
+    const multiSelectOn = Boolean(multiSelect);
+    const multiSelectRef = useRef(multiSelect);
+    multiSelectRef.current = multiSelect;
+    const [picked, setPicked] = useState<string[]>([]);
+    const pickedRef = useRef<string[]>([]);
+    pickedRef.current = picked;
+    const pickAnchorRef = useRef<number>(-1);
+    const dataRef = useRef(data);
+    dataRef.current = data;
+    const updatePicked = useCallback((next: string[]) => {
+        setPicked(next);
+        pickedRef.current = next;
+        const cfg = multiSelectRef.current;
+        if (cfg && typeof cfg === "object") cfg.onChange?.(next);
+    }, []);
+    // 목록에서 사라진 줄은 고른 것에서 뺀다(거르기 · 지우기).
+    useEffect(() => {
+        if (!pickedRef.current.length) return;
+        const ids = new Set(data.map((row, i) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i)));
+        const kept = pickedRef.current.filter((id) => ids.has(id));
+        if (kept.length !== pickedRef.current.length) updatePicked(kept);
+    }, [data, updatePicked]);
+    // Esc — 고른 것을 비운다.
+    useEffect(() => {
+        if (!multiSelectOn) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && pickedRef.current.length) updatePicked([]);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [multiSelectOn, updatePicked]);
     const { t: tDrag } = useI18n();
     const rowDragLabel = rowDrag?.label ?? tDrag("rowDragHandle");
     const reorder = useRowReorder<T>({
@@ -396,6 +430,14 @@ function VirtualDataTableComponent<T>({
             [`& tbody tr[data-row-id="${escaped}"]`]: selectedRowSx,
         };
     }, [useCssRowHighlight, selectedRowId, selectedRowSx]);
+
+    // 여러 줄 고르기로 고른 줄의 바탕(1.16.0) — 지금 열어 둔 줄(왼쪽 띠)과 구분되게 바탕만 칠한다.
+    const pickedCssSx = useMemo<Record<string, unknown> | null>(() => {
+        if (!picked.length) return null;
+        const bg = notion ? notionTokens.selectedBg : muiTheme.palette.action.selected;
+        const selector = picked.map((id) => `& tbody tr[data-row-id="${String(id).replace(/["\\]/g, "\\$&")}"]`).join(", ");
+        return { [selector]: { backgroundColor: bg, "& > td[data-vdt-pinned]": { backgroundColor: bg } } };
+    }, [picked, notion, notionTokens, muiTheme]);
 
     const isDev =
         typeof window !== "undefined" &&
@@ -1864,7 +1906,16 @@ function VirtualDataTableComponent<T>({
                                 onDragStart={(e) => {
                                     const cfg = rowDragRef.current;
                                     if (!cfg) return;
-                                    e.dataTransfer.setData(cfg.type, cfg.getData(item, index));
+                                    // 고른 줄 하나를 끌면 고른 줄을 모두 싣는다(1.16.0) — 보이는 차례대로 getData 값을 ","로 잇는다.
+                                    const pickedIds = pickedRef.current;
+                                    const idOf = (row: T, i: number) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i);
+                                    if (pickedIds.length > 1 && pickedIds.includes(idOf(item, index))) {
+                                        const rows = dataRef.current;
+                                        const values = rows.map((row, i) => (pickedIds.includes(idOf(row, i)) ? cfg.getData(row, i) : null)).filter((v): v is string => v !== null);
+                                        e.dataTransfer.setData(cfg.type, values.join(","));
+                                    } else {
+                                        e.dataTransfer.setData(cfg.type, cfg.getData(item, index));
+                                    }
                                     e.dataTransfer.effectAllowed = "move";
                                 }}
                                 // 줄 누름 · 끌어서 굴리기로 번지지 않게
@@ -2137,6 +2188,33 @@ function VirtualDataTableComponent<T>({
                                 e.stopPropagation();
                                 isScrollDraggingRef.current = false;
                                 return;
+                            }
+                            // 여러 줄 고르기(1.16.0) — Ctrl(⌘) 넣고 빼기 · Shift 범위. 이때는 줄 누름(onRowClick)을 부르지 않는다.
+                            if (item && multiSelectRef.current) {
+                                const idOf = (row: T, i: number) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i);
+                                const id = idOf(item, rowIndex);
+                                if (e.shiftKey && pickAnchorRef.current >= 0) {
+                                    e.preventDefault();
+                                    const rows = dataRef.current;
+                                    const from = Math.min(pickAnchorRef.current, rowIndex);
+                                    const to = Math.max(pickAnchorRef.current, rowIndex);
+                                    const range: string[] = [];
+                                    for (let i = from; i <= to && i < rows.length; i += 1) if (rows[i]) range.push(idOf(rows[i], i));
+                                    // Ctrl+Shift 는 이미 고른 것에 더한다.
+                                    updatePicked(e.ctrlKey || e.metaKey ? [...new Set([...pickedRef.current, ...range])] : range);
+                                    isScrollDraggingRef.current = false;
+                                    return;
+                                }
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    const has = pickedRef.current.includes(id);
+                                    updatePicked(has ? pickedRef.current.filter((v) => v !== id) : [...pickedRef.current, id]);
+                                    pickAnchorRef.current = rowIndex;
+                                    isScrollDraggingRef.current = false;
+                                    return;
+                                }
+                                pickAnchorRef.current = rowIndex;
+                                if (pickedRef.current.length) updatePicked([]);
                             }
                             if (item && onRowClickRef.current) {
                                 onRowClickRef.current(item, rowIndex);
@@ -2478,6 +2556,7 @@ function VirtualDataTableComponent<T>({
                     },
                     // 선택 행 CSS 하이라이트 (selectedRowId 변경 시 이 컨테이너만 갱신, 행 재렌더 없음).
                     ...(selectedRowCssSx ?? {}),
+                    ...(pickedCssSx ?? {}),
                     // 열 폭 손잡이(1.8.0) — 머리 칸(sticky 라 자리 기준이 된다) 오른쪽 끝 7px. 선은 호버 · 끄는 동안만 보인다(평소에 그으면 칸 사이 세로선이 두 겹이다).
                     ...(resizeOn
                         ? {

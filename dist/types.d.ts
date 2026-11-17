@@ -333,6 +333,15 @@ export interface VirtualDataTableProps<T> {
         label?: string;
     };
     /**
+     * 체크 칸 없이 여러 줄 고르기(1.16.0) — Ctrl(⌘)+클릭은 그 줄을 넣고 빼며 onRowClick 을 부르지 않는다(상세가 열리지 않는다).
+     * Shift+클릭은 마지막으로 누른 줄부터 그 줄까지. 그냥 클릭 · Esc 는 고른 것을 비운다. 고른 줄은 옅은 바탕으로 칠한다.
+     * rowDrag 와 함께 쓰면 고른 줄 하나를 끌 때 고른 줄이 모두 실린다(getData 값을 ","로 잇는다).
+     * onChange — 고른 줄 id(getRowId) 가 바뀔 때.
+     */
+    multiSelect?: boolean | {
+        onChange?: (ids: string[]) => void;
+    };
+    /**
      * 열 순서 바꾸기(1.12.0) — 머리 칸을 길게(holdMs, 기본 400ms) 누르면 열을 들고, 좌우로 끌어 놓으면 그 자리로 옮긴다.
      * 길게 누르기 전에 움직이면 예전 그대로(정렬 클릭 · 글자 고르기 · 굴리기). 끄는 동안 Esc 로 그만둔다.
      * 줄 손잡이 열 · 고정 열(pinned) · reorderable: false 열은 옮기지 않고, 묶음 머리(group)가 있으면 같은 묶음 안에서만 옮긴다.

@@ -261,6 +261,19 @@ Give a column `format` and VDT renders any date value the same way — `"date"` 
 - App-wide patterns: `setVirtualDataTableDateFormats({ date: "YY-MM-DD", datetime: "YY-MM-DD HH:mm", time: "HH:mm", month: "YYYY-MM" })` (these are the defaults). Tokens: `YYYY YY MM M DD D HH H mm ss`.
 - Only columns that must look different use `render`; inside it, `formatVdtDate(value, "date")` gives the same text.
 
+### Multi select without checkboxes (1.16.0)
+
+`multiSelect` lets people pick rows with the keyboard modifiers instead of a checkbox column.
+
+- Ctrl (⌘) + click adds or removes a row and does **not** call `onRowClick`.
+- Shift + click picks the range from the last clicked row (Ctrl + Shift adds the range).
+- A plain click or Esc clears the picks. Picked rows get a light background.
+- With `rowDrag`, dragging one of the picked rows carries all of them (`getData` values joined with `,`).
+
+```tsx
+<VirtualDataTable multiSelect={{ onChange: (ids) => setPicked(ids) }} rowDrag={{ type: "x-item", getData: (row) => String(row.seq) }} ... />
+```
+
 ### Page scroll (1.7.0)
 
 `scrollParent={element}` virtualizes against an outer scroller (react-virtuoso `customScrollParent`) — the table has no scroller of its own
