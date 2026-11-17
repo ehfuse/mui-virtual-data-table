@@ -2387,7 +2387,8 @@ function VirtualDataTableComponent<T>({
                         ? {
                               "& .vdt-row-drag": {
                                   position: "absolute",
-                                  left: 0,
+                                  // 칸 경계에 붙지 않게 4px 띄운다(1.14.2).
+                                  left: 4,
                                   top: "50%",
                                   transform: "translateY(-50%)",
                                   zIndex: 1,
