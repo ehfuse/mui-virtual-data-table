@@ -1893,6 +1893,10 @@ function VirtualDataTableComponent<T>({
                             ...(column.primary ? { fontSize: 15 } : {}),
                             // 날짜 칸은 꺾지 않는다(1.15.0 — "26. 11. 13 16:05" 가 날짜와 시각 사이에서 두 줄이 됐다).
                             ...(column.format ? { whiteSpace: "nowrap" as const } : {}),
+                            // 칸을 넘는 내용은 자른다(1.19.1 — 꺾지 않는 긴 글이 옆 칸 위로 겹쳐 그려졌다, 2026-11-17 문자 내역). 글이면 줄임표.
+                            // 일부러 칸 밖으로 그릴 열은 column.style 의 overflow 로 덮는다(아래에서 이긴다).
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
                             ...column.style,
                             ...(column.cellStyle ? column.cellStyle(item, index) : {}),
                             // 줄 끌기 손잡이(⋮⋮)가 첫 칸 왼쪽에 떠 있다 — 내용이 그 밑에 깔리지 않게 왼쪽 여백을 손잡이 자리만큼(1.15.0, 날짜가 첫 칸인 상담 목록).
