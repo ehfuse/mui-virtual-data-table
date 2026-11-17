@@ -274,12 +274,18 @@ function VirtualDataTableComponent<T>({
     const rowDragOn = Boolean(rowDrag);
 
     // 여러 줄 고르기(1.16.0) — 고른 줄 id 와 Shift 범위의 기준 줄. 줄을 다시 그리지 않게 칠하기는 표 상자의 CSS 규칙으로 한다.
-    const multiSelectOn = Boolean(multiSelect);
-    const multiSelectRef = useRef(multiSelect);
-    multiSelectRef.current = multiSelect;
-    const [picked, setPicked] = useState<string[]>([]);
+    // 1.17.0 — 줄 누름(onRowClick)이 있는 표는 기본으로 켠다(폰 목록은 Ctrl · Shift 가 없어 끈다 — mobileList 는 아래에서 정해져 클릭 처리 때 본다).
+    const multiSelectOn = !mobileList && (multiSelect === undefined ? Boolean(onRowClick) : Boolean(multiSelect));
+    const multiSelectRef = useRef<typeof multiSelect | true>(multiSelect);
+    multiSelectRef.current = multiSelectOn ? (multiSelect ?? true) : false;
+    const controlledPicked = multiSelect && typeof multiSelect === "object" && multiSelect.selected ? multiSelect.selected.map(String) : null;
+    const [ownPicked, setPicked] = useState<string[]>([]);
+    const picked = controlledPicked ?? ownPicked;
     const pickedRef = useRef<string[]>([]);
     pickedRef.current = picked;
+    // 소비처가 쥔 선택(체크 칸 목록)은 그냥 클릭 · Esc · 목록 바뀜으로 비우지 않는다 — 체크해 둔 뒤 줄을 눌러 보기만 해도 체크가 사라지면 안 된다.
+    const pickedControlledRef = useRef(false);
+    pickedControlledRef.current = controlledPicked !== null;
     const pickAnchorRef = useRef<number>(-1);
     const dataRef = useRef(data);
     dataRef.current = data;
@@ -291,7 +297,7 @@ function VirtualDataTableComponent<T>({
     }, []);
     // 목록에서 사라진 줄은 고른 것에서 뺀다(거르기 · 지우기).
     useEffect(() => {
-        if (!pickedRef.current.length) return;
+        if (!pickedRef.current.length || pickedControlledRef.current) return;
         const ids = new Set(data.map((row, i) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i)));
         const kept = pickedRef.current.filter((id) => ids.has(id));
         if (kept.length !== pickedRef.current.length) updatePicked(kept);
@@ -300,7 +306,7 @@ function VirtualDataTableComponent<T>({
     useEffect(() => {
         if (!multiSelectOn) return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && pickedRef.current.length) updatePicked([]);
+            if (e.key === "Escape" && pickedRef.current.length && !pickedControlledRef.current) updatePicked([]);
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
@@ -2205,7 +2211,8 @@ function VirtualDataTableComponent<T>({
                                     isScrollDraggingRef.current = false;
                                     return;
                                 }
-                                if (e.ctrlKey || e.metaKey) {
+                                // 기준 줄 없이 Shift+클릭이면 그 줄 하나를 고른다(상세를 열지 않는다).
+                                if (e.ctrlKey || e.metaKey || e.shiftKey) {
                                     e.preventDefault();
                                     const has = pickedRef.current.includes(id);
                                     updatePicked(has ? pickedRef.current.filter((v) => v !== id) : [...pickedRef.current, id]);
@@ -2214,7 +2221,7 @@ function VirtualDataTableComponent<T>({
                                     return;
                                 }
                                 pickAnchorRef.current = rowIndex;
-                                if (pickedRef.current.length) updatePicked([]);
+                                if (pickedRef.current.length && !pickedControlledRef.current) updatePicked([]);
                             }
                             if (item && onRowClickRef.current) {
                                 onRowClickRef.current(item, rowIndex);

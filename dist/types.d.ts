@@ -336,9 +336,11 @@ export interface VirtualDataTableProps<T> {
      * 체크 칸 없이 여러 줄 고르기(1.16.0) — Ctrl(⌘)+클릭은 그 줄을 넣고 빼며 onRowClick 을 부르지 않는다(상세가 열리지 않는다).
      * Shift+클릭은 마지막으로 누른 줄부터 그 줄까지. 그냥 클릭 · Esc 는 고른 것을 비운다. 고른 줄은 옅은 바탕으로 칠한다.
      * rowDrag 와 함께 쓰면 고른 줄 하나를 끌 때 고른 줄이 모두 실린다(getData 값을 ","로 잇는다).
-     * onChange — 고른 줄 id(getRowId) 가 바뀔 때.
+     * onChange — 고른 줄 id(getRowId) 가 바뀔 때. selected 를 주면 고른 것을 소비처가 쥔다(체크 칸 목록 — Ctrl · Shift 클릭이 체크를 바꾼다).
+     * 1.17.0 부터 onRowClick 이 있는 표는 기본으로 켜진다(폰 목록 제외) — 끄려면 false.
      */
     multiSelect?: boolean | {
+        selected?: (string | number)[];
         onChange?: (ids: string[]) => void;
     };
     /**

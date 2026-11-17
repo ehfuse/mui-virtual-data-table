@@ -269,6 +269,8 @@ Give a column `format` and VDT renders any date value the same way — `"date"` 
 - Shift + click picks the range from the last clicked row (Ctrl + Shift adds the range).
 - A plain click or Esc clears the picks. Picked rows get a light background.
 - With `rowDrag`, dragging one of the picked rows carries all of them (`getData` values joined with `,`).
+- 1.17.0: on by default when `onRowClick` is set (not in the phone list); pass `false` to turn it off.
+- Checkbox lists can own the picks: `multiSelect={{ selected: checkedIds, onChange: setCheckedIds }}` — then a plain click or Esc does not clear them.
 
 ```tsx
 <VirtualDataTable multiSelect={{ onChange: (ids) => setPicked(ids) }} rowDrag={{ type: "x-item", getData: (row) => String(row.seq) }} ... />
