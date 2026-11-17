@@ -6,5 +6,6 @@
     "reorderHandle": "拖动调整顺序",
     "search": "搜索",
     "sortAscending": "升序排序",
-    "sortDescending": "降序排序"
+    "sortDescending": "降序排序",
+    "rowDragHandle": "拖动以移动"
 }

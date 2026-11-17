@@ -6,5 +6,6 @@
     "reorderHandle": "Trascina per riordinare",
     "search": "Cerca",
     "sortAscending": "Ordina in ordine crescente",
-    "sortDescending": "Ordina in ordine decrescente"
+    "sortDescending": "Ordina in ordine decrescente",
+    "rowDragHandle": "Trascina per spostare"
 }

@@ -10,6 +10,8 @@ import React from "react";
 import type { DataColumn, VDTRowReorderConfig } from "./types";
 /** 손잡이 열의 id — 소비처 열과 겹치지 않게 */
 export declare const REORDER_COLUMN_ID = "__vdt_reorder";
+/** 손잡이 그림(Material DragIndicator 경로) — @mui/icons-material 을 들이지 않으려고 경로만 둔다 */
+export declare const HANDLE_ICON: import("react/jsx-runtime").JSX.Element;
 export interface UseRowReorderArgs<T> {
     config: VDTRowReorderConfig<T> | undefined;
     tableBoxRef: React.RefObject<HTMLElement | null>;

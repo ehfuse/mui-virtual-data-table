@@ -18,7 +18,7 @@ const EDGE_PX = 40;
 const EDGE_SPEED = 14;
 
 /** 손잡이 그림(Material DragIndicator 경로) — @mui/icons-material 을 들이지 않으려고 경로만 둔다 */
-const HANDLE_ICON = (
+export const HANDLE_ICON = (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
         <path fill="currentColor" d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
     </svg>

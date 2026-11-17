@@ -6,5 +6,6 @@
     "reorderHandle": "Kéo để đổi thứ tự",
     "search": "Tìm kiếm",
     "sortAscending": "Sắp xếp tăng dần",
-    "sortDescending": "Sắp xếp giảm dần"
+    "sortDescending": "Sắp xếp giảm dần",
+    "rowDragHandle": "Kéo để di chuyển"
 }

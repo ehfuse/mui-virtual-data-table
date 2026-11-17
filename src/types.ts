@@ -330,6 +330,12 @@ export interface VirtualDataTableProps<T> {
      */
     rowReorder?: VDTRowReorderConfig<T>;
     /**
+     * 줄을 끌어 다른 곳(사이드바 폴더 등)에 놓기(1.14.0). 마우스를 올리면 첫 칸 왼쪽 끝에 손잡이(⋮⋮)가 떠오르고(absolute — 칸 폭 · 줄 높이를 바꾸지 않는다),
+     * **그 손잡이만** 끌린다 — 줄의 나머지 자리는 그대로 끌어서 가로로 민다(overlay-scrollbar). 놓는 쪽은 dataTransfer 의 type 으로 받는다.
+     * getData 가 돌려준 글이 실린다(여러 줄을 함께 옮기려면 부르는 쪽이 고른 줄들을 묶어 돌려준다).
+     */
+    rowDrag?: { type: string; getData: (item: T, index: number) => string; label?: string };
+    /**
      * 열 순서 바꾸기(1.12.0) — 머리 칸을 길게(holdMs, 기본 400ms) 누르면 열을 들고, 좌우로 끌어 놓으면 그 자리로 옮긴다.
      * 길게 누르기 전에 움직이면 예전 그대로(정렬 클릭 · 글자 고르기 · 굴리기). 끄는 동안 Esc 로 그만둔다.
      * 줄 손잡이 열 · 고정 열(pinned) · reorderable: false 열은 옮기지 않고, 묶음 머리(group)가 있으면 같은 묶음 안에서만 옮긴다.

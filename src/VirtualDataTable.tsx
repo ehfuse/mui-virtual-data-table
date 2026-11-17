@@ -51,7 +51,8 @@ import {
     type Theme,
 } from "@mui/material";
 import { TableVirtuoso } from "react-virtuoso";
-import { REORDER_COLUMN_ID, useRowReorder } from "./rowReorder";
+import { HANDLE_ICON, REORDER_COLUMN_ID, useRowReorder } from "./rowReorder";
+import { useI18n } from "./i18n";
 import { applyColumnOrder, useColumnReorder } from "./columnReorder";
 import type { TableComponents } from "react-virtuoso";
 import { LoadingProgress } from "@ehfuse/mui-fadeout-loading-progress";
@@ -224,6 +225,7 @@ function VirtualDataTableComponent<T>({
     columnWidths,
     onColumnWidthsChange,
     rowReorder,
+    rowDrag,
     columnReorder,
     columnOrder,
     onColumnOrderChange,
@@ -250,6 +252,12 @@ function VirtualDataTableComponent<T>({
     const reorderScrollerRef = useRef<() => HTMLElement | null>(() => null);
     const dataLengthRef = useRef(data.length);
     dataLengthRef.current = data.length;
+    // 줄 끌기(1.14.0) — 끌 때 최신 설정을 읽는다(줄 부품을 다시 만들지 않게 ref).
+    const rowDragRef = useRef(rowDrag);
+    rowDragRef.current = rowDrag;
+    const rowDragOn = Boolean(rowDrag);
+    const { t: tDrag } = useI18n();
+    const rowDragLabel = rowDrag?.label ?? tDrag("rowDragHandle");
     const reorder = useRowReorder<T>({
         config: rowReorder,
         tableBoxRef: reorderBoxRef,
@@ -1751,6 +1759,8 @@ function VirtualDataTableComponent<T>({
 
             // 오른쪽으로 합친 칸(colSpan)에 덮인 열 수 — 그만큼 다음 열들의 칸을 그리지 않는다.
             let coveredByColSpan = 0;
+            // 줄 끌기 손잡이(1.14.0) — 처음 그리는 칸 하나에만.
+            let dragHandlePlaced = !rowDragOn;
             const cells = columns.map((column, columnIndex) => {
                 if (coveredByColSpan > 0) {
                     coveredByColSpan -= 1;
@@ -1781,6 +1791,8 @@ function VirtualDataTableComponent<T>({
                 const span = column.rowSpan ? column.rowSpan(item, index) : 1;
                 if (span <= 0) return null;
                 const onCellClick = column.onCellClick;
+                const withDragHandle = !dragHandlePlaced;
+                dragHandlePlaced = true;
                 return (
                     <TableCell
                         key={String(column.id)}
@@ -1810,8 +1822,33 @@ function VirtualDataTableComponent<T>({
                             ...(column.cellStyle ? column.cellStyle(item, index) : {}),
                             padding: customPadding ? column.cellPadding : "8px 16px",
                             ...pinnedStyle(column, false),
+                            // 손잡이가 칸 안에 absolute 로 서게(고정 칸은 sticky 라 이미 기준이 된다).
+                            ...(withDragHandle && !pinned ? { position: "relative" as const } : {}),
                         }}
                     >
+                        {withDragHandle ? (
+                            <span
+                                className="vdt-row-drag"
+                                role="button"
+                                aria-label={rowDragLabel}
+                                title={rowDragLabel}
+                                draggable
+                                onDragStart={(e) => {
+                                    const cfg = rowDragRef.current;
+                                    if (!cfg) return;
+                                    e.dataTransfer.setData(cfg.type, cfg.getData(item, index));
+                                    e.dataTransfer.effectAllowed = "move";
+                                }}
+                                // 줄 누름 · 끌어서 굴리기로 번지지 않게
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                            >
+                                {HANDLE_ICON}
+                            </span>
+                        ) : null}
                         {cellValue}
                     </TableCell>
                 );
@@ -1829,7 +1866,7 @@ function VirtualDataTableComponent<T>({
 
             return <>{cells}</>;
         },
-        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow, colWidthStyle, reorder.on, reorder.renderHandle],
+        [columns, perfDebugEnabled, renderFullWidthRow, fullWidthRowSx, notion, pinnedLeft, pinnedStyle, mobileList, renderMobileRow, colWidthStyle, reorder.on, reorder.renderHandle, rowDragOn, rowDragLabel],
     );
 
     /**
@@ -2342,6 +2379,31 @@ function VirtualDataTableComponent<T>({
                     position: "relative",
                     height: sizeAuto ? "auto" : "100%",
                     width: "100%",
+                    // 줄 끌기 손잡이(1.14.0) — 첫 칸 왼쪽 끝에 떠 있고 줄에 마우스를 올릴 때만 보인다(자리를 차지하지 않는다).
+                    ...(rowDragOn
+                        ? {
+                              "& .vdt-row-drag": {
+                                  position: "absolute",
+                                  left: 0,
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  zIndex: 1,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 16,
+                                  height: 28,
+                                  borderRadius: "4px",
+                                  color: notion ? notionTokens.headerColor : muiTheme.palette.text.secondary,
+                                  cursor: "grab",
+                                  opacity: 0,
+                                  transition: "opacity .1s",
+                                  "& svg": { width: 16, height: 16 },
+                                  "&:hover": { color: muiTheme.palette.text.primary, backgroundColor: notion ? notionTokens.hoverBg : "rgba(0,0,0,.06)" },
+                              },
+                              "& tbody tr:hover .vdt-row-drag, & .vdt-row-drag:focus-visible": { opacity: 1 },
+                          }
+                        : {}),
                     // 줄 끌어 옮기기(1.9.0) — 손잡이 · 끌던 줄 흐리게 · 놓을 자리 선. 줄 DOM 은 속성만 바뀌고 React 는 다시 그리지 않는다
                     ...(reorder.on
                         ? {

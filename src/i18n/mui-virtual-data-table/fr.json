@@ -6,5 +6,6 @@
     "reorderHandle": "Glisser pour réorganiser",
     "search": "Rechercher",
     "sortAscending": "Tri croissant",
-    "sortDescending": "Tri décroissant"
+    "sortDescending": "Tri décroissant",
+    "rowDragHandle": "Glisser pour déplacer"
 }

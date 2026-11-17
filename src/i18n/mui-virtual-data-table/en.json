@@ -6,5 +6,6 @@
     "reorderHandle": "Drag to reorder",
     "search": "Search",
     "sortAscending": "Sort ascending",
-    "sortDescending": "Sort descending"
+    "sortDescending": "Sort descending",
+    "rowDragHandle": "Drag to move"
 }

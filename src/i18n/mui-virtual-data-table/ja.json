@@ -6,5 +6,6 @@
     "reorderHandle": "ドラッグして並べ替え",
     "search": "検索",
     "sortAscending": "昇順で並べ替え",
-    "sortDescending": "降順で並べ替え"
+    "sortDescending": "降順で並べ替え",
+    "rowDragHandle": "ドラッグして移動"
 }

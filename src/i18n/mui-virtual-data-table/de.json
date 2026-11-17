@@ -6,5 +6,6 @@
     "reorderHandle": "Ziehen zum Neuanordnen",
     "search": "Suchen",
     "sortAscending": "Aufsteigend sortieren",
-    "sortDescending": "Absteigend sortieren"
+    "sortDescending": "Absteigend sortieren",
+    "rowDragHandle": "Zum Verschieben ziehen"
 }
