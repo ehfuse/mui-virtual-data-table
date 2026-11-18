@@ -2543,7 +2543,9 @@ function VirtualDataTableComponent<T>({
                               // 손잡이 자리(1.20.0) — 노션풍 칸 여백(0 14px !important)이 인라인 24 를 덮어 내용이 손잡이 밑에 깔렸다. 여기서 다시 준다.
                               "& tbody tr td[data-vdt-drag-cell]:not([data-vdt-pad])": { paddingLeft: `${ROW_DRAG_LANE}px !important` },
                               // 넓힌 가운데 첫 칸은 머리 · 본문 모두 왼쪽 24 · 오른쪽 4 — 내용이 손잡이 오른쪽 자리의 가운데에 선다.
-                              "& thead tr th[data-vdt-drag-lane], & tbody tr td[data-vdt-drag-lane]:not([data-vdt-pad])": {
+                              // 머리 칸도 :not([data-vdt-pad]) 를 붙인다(1.21.1) — 노션풍 머리 여백 규칙(th:not([data-vdt-pad]))과 우선순위가 같아 뒤에 적힌 그쪽이 이겨
+                              // 머리 체크 상자가 줄 체크 상자보다 11px 왼쪽에 섰다(2026-11-18 사용자 지적 "체크 위치 밀리는 거").
+                              "& thead tr th[data-vdt-drag-lane]:not([data-vdt-pad]), & tbody tr td[data-vdt-drag-lane]:not([data-vdt-pad])": {
                                   paddingLeft: `${ROW_DRAG_LANE}px !important`,
                                   paddingRight: "4px !important",
                               },
