@@ -383,7 +383,7 @@ function VirtualDataTableComponent<T>({
     const gutterSx =
         gutterPx > 0
             ? {
-                  "& thead tr th:last-of-type, & tbody tr td:last-of-type:not([data-vdt-pad])": {
+                  "& thead tr th:last-of-type:not([data-vdt-pad]), & tbody tr td:last-of-type:not([data-vdt-pad])": {
                       paddingRight: `${(notion ? 14 : 16) + gutterPx}px !important`,
                   },
               }
@@ -1362,6 +1362,8 @@ function VirtualDataTableComponent<T>({
                             // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
                             title={typeof col.text === "string" ? col.text : undefined}
                             {...col.headerProps}
+                            // 머리 칸 여백을 따로 준 열은 노션풍 머리 여백(!important)에서 빠진다(1.21.0, headerPadding).
+                            data-vdt-pad={col.headerPadding !== undefined ? "" : undefined}
                             onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                             // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
                             {...colReorder.headerCellProps(col)}
@@ -1373,7 +1375,7 @@ function VirtualDataTableComponent<T>({
                                 position: "sticky",
                                 top: 0,
                                 zIndex: 2,
-                                padding: "16px",
+                                padding: col.headerPadding ?? "16px",
                                 ...pinnedStyle(col, true),
                                 ...col.headerProps?.style,
                             }}
@@ -1475,6 +1477,8 @@ function VirtualDataTableComponent<T>({
                     // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
                     title={typeof col.text === "string" ? col.text : undefined}
                     {...col.headerProps}
+                    // 머리 칸 여백을 따로 준 열은 노션풍 머리 여백(!important)에서 빠진다(1.21.0, headerPadding).
+                    data-vdt-pad={col.headerPadding !== undefined ? "" : undefined}
                     onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                     // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
                     {...colReorder.headerCellProps(col)}
@@ -1485,7 +1489,7 @@ function VirtualDataTableComponent<T>({
                         position: "sticky",
                         top: 0,
                         zIndex: 2,
-                        padding: "16px",
+                        padding: col.headerPadding ?? "16px",
                         ...pinnedStyle(col, true),
                         ...col.headerProps?.style,
                     }}
@@ -1603,6 +1607,8 @@ function VirtualDataTableComponent<T>({
                         // 노션풍 머리는 한 줄 말줄임이라 글자 머리는 전체 이름을 툴팁으로 보인다(headerProps.title 이 있으면 그것이 이긴다).
                         title={typeof col.text === "string" ? col.text : undefined}
                         {...col.headerProps}
+                        // 머리 칸 여백을 따로 준 열은 노션풍 머리 여백(!important)에서 빠진다(1.21.0, headerPadding).
+                        data-vdt-pad={col.headerPadding !== undefined ? "" : undefined}
                         onContextMenu={(e: React.MouseEvent<HTMLTableCellElement>) => handleHeaderContextMenu(col, e)}
                         // 길게 눌러 열 옮기기(1.12.0) — 켜지 않았거나 옮길 수 없는 열이면 아무것도 얹지 않는다
                         {...colReorder.headerCellProps(col)}
@@ -1613,7 +1619,7 @@ function VirtualDataTableComponent<T>({
                             position: "sticky",
                             top: 0,
                             zIndex: 2,
-                            padding: "16px",
+                            padding: col.headerPadding ?? "16px",
                             ...pinnedStyle(col, true),
                             ...col.headerProps?.style,
                         }}
@@ -2662,10 +2668,10 @@ function VirtualDataTableComponent<T>({
                               "& thead > tr > th": { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
                               "& thead > tr > th > *": { maxWidth: "100%" },
                               // 정렬 화살표 자리는 sortPlacement(칸 맞춤)가 정한다(1.10.4 — 표 꼴과 상관없이)
+                              "& thead tr th:not([data-vdt-pad])": { padding: "0 14px !important" },
                               "& thead tr th": {
                                   height: columnHeight,
                                   boxSizing: "border-box",
-                                  padding: "0 14px !important",
                                   fontSize: 13,
                                   fontWeight: "500 !important",
                                   color: notionTokens.headerColor,

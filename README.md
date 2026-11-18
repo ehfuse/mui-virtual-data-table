@@ -177,6 +177,7 @@ function App() {
 { id: "d1", text: "월", onCellClick: (item, i, e) => {} }    // per-cell click + cell hover (row click is not fired)
 { id: "who", text: "담당", rowSpan: (item, i) => 2 }         // merge down; return 0 on covered rows (use with autoHeight / short tables)
 { id: "m1", text: "1월", cellPadding: "4px 0" }              // body padding override
+{ id: "pick", text: "", width: 56, cellPadding: 0, headerPadding: 0 } // 1.21.0: header padding override (also leaves notion's 0 14px)
 { id: "t", text: "업무", cellStyle: (item) => ({ color: "#999" }) } // per-row cell style
 { id: "c", text: "열", headerProps: { draggable: true, onDrop } }  // extra th attributes (drag to reorder, title…)
 { id: "who", text: "책임자", width: 110, colSpan: (item) => (item.isEvent ? 2 : 1) } // 1.3.0: merge right (the covered column is not drawn)

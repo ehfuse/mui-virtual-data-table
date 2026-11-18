@@ -65,6 +65,11 @@ export interface DataColumn<T> {
      * 여백을 따로 줘야 하는 열에 쓴다.
      */
     cellPadding?: string | number;
+    /**
+     * 머리 칸 안쪽 여백(1.21.0). 주면 기본(variant 별 — 노션풍은 0 14px) 여백 대신 이 값을 쓴다 — 머리에 체크박스 · 아이콘을 두는 좁은 열에서
+     * cellPadding 과 함께 준다(본문만 여백을 빼면 머리 칸 내용이 넘치거나 본문과 가운데가 어긋난다).
+     */
+    headerPadding?: string | number;
     /** 줄의 대표 칸(이름 · 제목) — 본문 글자를 15px 로 키운다. 화면마다 첫 칸에 fontSize 15 를 적던 것을 대신한다. */
     primary?: boolean;
     /**

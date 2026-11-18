@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.21.0
+
+### Added
+
+- 열 `headerPadding` — 머리 칸 안쪽 여백. 주면 기본 여백(노션풍 `0 14px !important` 포함) 대신 이 값을 쓴다.
+  머리에 체크박스 · 아이콘을 두는 좁은 열에서 `cellPadding` 과 함께 준다. 끝 칸이면 스크롤 막대 자리 여백도 붙지 않는다(본문 `cellPadding` 과 같다).
+
 ## 1.13.1
 
 ### Fixed
