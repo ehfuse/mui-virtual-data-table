@@ -1764,7 +1764,8 @@ function VirtualDataTableComponent<T>({
                     <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
                         {(title || badge.length > 0) && (
                             <Box sx={{ display: "flex", alignItems: "flex-start", gap: "8px", minWidth: 0 }}>
-                                <Box sx={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, overflowWrap: "anywhere" }}>
+                                {/* 글자 크기(1.21.2) — 제목 16 · 아래 줄 · 값 줄 15. 13 은 폰에서 작았다(2026-11-18 사용자 지적 "카드 글자 너무 작지 않아?" · 앱 규칙 14 미만 금지). */}
+                                <Box sx={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 500, overflowWrap: "anywhere" }}>
                                     {title ? cell(title) : null}
                                 </Box>
                                 {badge.map((c) => (
@@ -1775,12 +1776,12 @@ function VirtualDataTableComponent<T>({
                             </Box>
                         )}
                         {sub.map((c) => (
-                            <Box key={String(c.id)} sx={{ fontSize: 13, color: notionTokens.headerColor, minWidth: 0 }}>
+                            <Box key={String(c.id)} sx={{ fontSize: 15, color: notionTokens.headerColor, minWidth: 0 }}>
                                 {cell(c)}
                             </Box>
                         ))}
                         {meta.length > 0 && (
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, minWidth: 0 }}>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", fontSize: 15, minWidth: 0 }}>
                                 {meta.map((c) => {
                                     const label = c.mobileLabel === false ? null : (c.mobileLabel ?? (typeof c.text === "string" ? c.text : null));
                                     return (
