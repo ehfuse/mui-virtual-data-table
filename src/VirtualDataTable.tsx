@@ -368,6 +368,9 @@ function VirtualDataTableComponent<T>({
     columnCountRef.current = columns.length;
     // 바깥 스크롤(1.7.0) — 페이지가 굴리고 표는 그 스크롤에 맞춰 보이는 줄만 그린다(높이는 내용만큼)
     const external = Boolean(scrollParent);
+    // 데이터가 바뀔 때 맨 위로 올리는 효과가 읽는다(1.21.1) — 바깥 스크롤이면 그 요소.
+    const scrollParentRef = useRef<HTMLElement | null>(null);
+    scrollParentRef.current = external ? (scrollParent as HTMLElement | null) : null;
     // 높이를 내용에 맡기는가 — autoHeight(가상화 없음) · 바깥 스크롤(가상화 있음)
     const sizeAuto = autoHeight || external;
     // 카드 줄은 내용만큼 높아진다(rowHeight 는 최소 높이)
@@ -1317,11 +1320,21 @@ function VirtualDataTableComponent<T>({
         }
 
         if (virtuosoRef.current && currentLength > 0 && dataReplaced && resetScrollOnDataChangeRef.current) {
-            virtuosoRef.current.scrollToIndex({
-                index: 0,
-                align: "start",
-                behavior: "auto",
-            });
+            const outer = scrollParentRef.current;
+            const box = tableBoxRef.current;
+            if (outer && box) {
+                // 바깥 스크롤(scrollParent — 폰 셸 목록)은 페이지 전체가 한 스크롤이다. scrollToIndex(0, start) 는 표 첫 줄을 스크롤 상자 맨 위로
+                // 맞춰 표 위의 머리(검색 · 거르기)를 화면 밖으로 밀어냈다(1.21.1 — 거르기를 건 채 열면 열자마자 내려가 있었다).
+                // 이미 표 시작점보다 아래로 굴려 둔 때만 표 시작점까지 올린다 — 위에 있으면 그대로 둔다.
+                const tableTop = box.getBoundingClientRect().top - outer.getBoundingClientRect().top + outer.scrollTop;
+                if (outer.scrollTop > tableTop) outer.scrollTop = tableTop;
+            } else {
+                virtuosoRef.current.scrollToIndex({
+                    index: 0,
+                    align: "start",
+                    behavior: "auto",
+                });
+            }
         }
 
         prevDataLengthRef.current = currentLength;
