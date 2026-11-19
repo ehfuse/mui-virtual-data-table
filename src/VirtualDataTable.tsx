@@ -257,8 +257,8 @@ function VirtualDataTableComponent<T>({
     const notionTokens = borderColor ? { ...baseNotionTokens, border: borderColor, borderStrong: borderColor } : baseNotionTokens;
     const hasPinnedRows = (pinnedRows?.length ?? 0) > 0;
     const columnHeight = columnHeightProp ?? (notion ? 40 : 56);
-    // 노션풍 줄 높이 기본 48 — 업무함 목록 표 · 전자결재 표가 쓰는 값이다.
-    const rowHeight = rowHeightProp ?? (notion ? 48 : 50);
+    // 노션풍 줄 높이 기본 44(1.22.0 — 아래선 1 포함 실측 45, 업무함 목록 표 기준 2026-11-19. 예전 48).
+    const rowHeight = rowHeightProp ?? (notion ? 44 : 50);
     // 틀 없이(framed=false) 그릴 때는 바깥 상자가 이미 테두리를 둘렀다 — 좌우 여백 없이 표가 상자에 꽉 찬다.
     const paddingX = framed ? (paddingXProp ?? (notion ? "12px" : "1rem")) : 0;
     // 폰 목록(1.6.0) — 켠 표만, 화면이 좁을 때만 카드 줄로 그린다
