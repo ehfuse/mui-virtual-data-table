@@ -243,7 +243,7 @@ Pinned rows example (1.3.0):
 />
 ```
 
-notion defaults (1.2.0): rowHeight 48, header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
+notion defaults (1.2.0): rowHeight 44 (48 before 1.22.0), header text 13px, selected row (`selectedRowId`) = `#dbeafe` + 3px `#3b82f6` left bar (dark values included),
 string `emptyMessage` = one light grey line under the header, footer cells use the body padding.
 
 ### Date columns (1.15.0)
