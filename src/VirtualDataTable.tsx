@@ -2722,7 +2722,9 @@ function VirtualDataTableComponent<T>({
                               // 맞닿는 경우: 내용 높이만큼 서는 표(autoHeight), 줄이 영역보다 길어 끝까지 내리면 바닥에 닿는 표, 합계 줄이 있는 표.
                               // 줄이 적어 아래가 비는 표는 그대로 긋는다 — 줄이 어디서 끝나는지 보여야 한다.
                               // autoHeight 라도 틀이 없으면(framed=false) 맞닿는 바닥선이 없다 — 마지막 줄 아래선을 남긴다(1.9.3, 업무함 구성원 목록 "마지막 줄 아래 구분선이 없다").
-                              ...(data.length > 0 && ((sizeAuto && framed) || listOverflows || hasFooter)
+                              // 합계 줄(footer)은 가상 표에서 틀 바닥에 붙는다 — 줄이 적으면 마지막 줄과 합계 줄 사이가 비므로 선을 남긴다(1.22.2, 업무함 매출 목록
+                              // "세로 스크롤이 없으면 마지막 줄 아래선이 있어야"). 맞닿는 것은 내용 높이 표(sizeAuto)이거나 줄이 넘쳐 끝까지 내린 때뿐이다.
+                              ...(data.length > 0 && ((sizeAuto && framed) || listOverflows || (hasFooter && sizeAuto))
                                   ? { [`& tbody tr[data-index="${data.length - 1}"]:not([data-vdt-pinned-row]) td`]: { borderBottom: "none" } }
                                   : {}),
                           }
