@@ -774,8 +774,20 @@ function VirtualDataTableComponent<T>({
         if (!el || typeof ResizeObserver === "undefined") return;
         const observer = new ResizeObserver(() => checkListOverflow());
         observer.observe(el);
+        // 안쪽 내용 상자도 본다(1.22.1).
+        if (el.firstElementChild) observer.observe(el.firstElementChild);
         return () => observer.disconnect();
     }, [checkListOverflow, autoHeight]);
+    // 줄 수가 바뀌거나 처음 그린 뒤에 한 번 더 잰다(1.22.1) — 화면을 준비하는 동안(영역이 아직 작을 때) 잰 "넘침" 이 남아
+    // 세로 스크롤이 없는데도 마지막 줄 아래선이 빠진 채였다(업무함 점검표 · 서류함 2026-11-22). 다음 프레임 · 조금 뒤 두 번 잰다.
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => checkListOverflow());
+        const timer = window.setTimeout(() => checkListOverflow(), 300);
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.clearTimeout(timer);
+        };
+    }, [data.length, checkListOverflow]);
 
     // 소비처가 인라인으로 넘기는 콜백(onRowClick/getRowId)은 매 렌더마다 identity 가 바뀐다.
     // 이를 ref 로 잡아 두면 VirtuosoTableComponents(memo)를 재생성하지 않아도 최신 콜백을 쓸 수 있어,
