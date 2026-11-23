@@ -192,6 +192,7 @@ function VirtualDataTableComponent<T>({
     onRowClick,
     getRowId,
     selectedRowId,
+    rowKeyNav,
     selectedRowSx: selectedRowSxProp,
     rowHeight: rowHeightProp,
     columnHeight: columnHeightProp,
@@ -980,6 +981,51 @@ function VirtualDataTableComponent<T>({
     );
     // truthiness 가 바뀌면(클릭 가능 여부) hover/cursor 스타일이 달라지므로 deps 에는 boolean 만 넣는다.
     const hasRowClick = !!onRowClick;
+
+    // ↑ · ↓ 로 연 줄 옮기기(1.23.0) — 마지막으로 누른 표가 키를 받는다. 포커스에 기대지 않는다:
+    // 줄을 눌러도 포커스가 body 에 남는 화면이 있다(상세 패널이 열리며 포커스를 건드리는 곳 — 업무함 임대 계약 목록에서 실측).
+    // 표 안을 누르면 켜지고 표 밖(상세 패널 · 사이드바 등)을 누르면 꺼진다. 포커스가 body 이거나 표 안일 때만 받는다.
+    const keyNavOn = hasRowClick && !mobileList && rowKeyNav !== false;
+    const selectedRowIdRef = useRef(selectedRowId);
+    selectedRowIdRef.current = selectedRowId;
+    useEffect(() => {
+        if (!keyNavOn) return;
+        let active = false;
+        const onPointerDown = (e: MouseEvent) => {
+            active = Boolean(tableBoxRef.current && e.target instanceof Node && tableBoxRef.current.contains(e.target));
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (!active || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+            if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
+            const box = tableBoxRef.current;
+            const target = e.target;
+            if (!box || !(target instanceof HTMLElement)) return;
+            if (target !== document.body && !box.contains(target)) return;
+            if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+            if (target.closest('[role="menu"], [role="listbox"], [role="dialog"], [role="combobox"]')) return;
+            const selected = selectedRowIdRef.current;
+            const click = onRowClickRef.current;
+            if (selected === null || selected === undefined || !click) return;
+            const rows = dataRef.current;
+            const idOf = (row: T, i: number) => String(getRowIdRef.current ? getRowIdRef.current(row, i) : i);
+            const index = rows.findIndex((row, i) => row !== undefined && row !== null && idOf(row, i) === String(selected));
+            if (index < 0) return;
+            const next = index + (e.key === "ArrowDown" ? 1 : -1);
+            if (next < 0 || next >= rows.length || !rows[next]) return;
+            // 표 안 스크롤 상자(오버레이 스크롤바)가 같은 키로 굴리지 않게 여기서 끝낸다 — 그래서 캡처 단계에서 받는다.
+            e.preventDefault();
+            e.stopPropagation();
+            click(rows[next], next);
+            // 보이는 줄이면 그대로, 밖이면 가장자리까지만 굴린다(가상 표라 아직 안 그린 줄도 맞춘다).
+            virtuosoRef.current?.scrollIntoView?.({ index: next, behavior: "auto" });
+        };
+        document.addEventListener("mousedown", onPointerDown, true);
+        window.addEventListener("keydown", onKey, true);
+        return () => {
+            document.removeEventListener("mousedown", onPointerDown, true);
+            window.removeEventListener("keydown", onKey, true);
+        };
+    }, [keyNavOn]);
 
     // 스크롤 컨테이너 참조 (OverlayScrollbar용)
     const isScrollDraggingRef = useRef(false); // OverlayScrollbar 드래그 스크롤 감지용

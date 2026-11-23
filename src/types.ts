@@ -359,6 +359,13 @@ export interface VirtualDataTableProps<T> {
      */
     multiSelect?: boolean | { selected?: (string | number)[]; onChange?: (ids: string[]) => void };
     /**
+     * ↑ · ↓ 로 연 줄 옮기기(1.23.0) — 마지막으로 누른 표(표 밖을 누르면 풀린다)에 연 줄(selectedRowId)이 있으면
+     * 위 · 아래 줄의 onRowClick 을 부르고 그 줄이 보이게 굴린다. 분할 · 드로어 상세처럼 "연 줄" 이 있는 목록에서 줄을 넘겨 보는 데 쓴다.
+     * onRowClick 과 selectedRowId 가 있는 표는 기본으로 켜진다(폰 목록 제외) — 끄려면 false.
+     * 입력 칸 · 메뉴 안의 키, Alt · Ctrl · ⌘ · Shift 를 함께 누른 키는 건드리지 않는다.
+     */
+    rowKeyNav?: boolean;
+    /**
      * 열 순서 바꾸기(1.12.0) — 머리 칸을 길게(holdMs, 기본 400ms) 누르면 열을 들고, 좌우로 끌어 놓으면 그 자리로 옮긴다.
      * 길게 누르기 전에 움직이면 예전 그대로(정렬 클릭 · 글자 고르기 · 굴리기). 끄는 동안 Esc 로 그만둔다.
      * 줄 손잡이 열 · 고정 열(pinned) · reorderable: false 열은 옮기지 않고, 묶음 머리(group)가 있으면 같은 묶음 안에서만 옮긴다.
